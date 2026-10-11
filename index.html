@@ -1,0 +1,4339 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Phonogramm Messenger</title>
+  
+  <!-- OneSignal Web Push SDK -->
+  <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+
+  <style>
+    :root {
+      --bg-dark: #0e1621;
+      --panel-bg: #17212b;
+      --active-item: #202b36;
+      --hover-item: #1c2732;
+      --input-bg: #242f3d;
+      --msg-in: #182533;
+      --msg-out: #2b5278;
+      --accent: #5288c1;
+      --accent-hover: #4374a5;
+      --verified-blue: #3390ec;
+      --danger: #e53935;
+      --call-green: #4fae63;
+      --online: #4fae4e;
+      --offline: #708499;
+      --text-main: #f5f5f5;
+      --text-sub: #708499;
+      --modal-bg: #1e2a38;
+      --file-card-bg: rgba(0, 0, 0, 0.25);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    /* Блокировка рекламных баннеров хостингов */
+    body > :not(#app-container):not(.modal-overlay):not(#toast-container):not(#incoming-call-modal):not(#call-screen-overlay):not(#image-viewer-modal):not(#env-warning-banner):not(audio):not(script) {
+      display: none !important;
+      visibility: hidden !important;
+      opacity: 0 !important;
+      height: 0 !important;
+      max-height: 0 !important;
+      pointer-events: none !important;
+      position: absolute !important;
+      bottom: -9999px !important;
+      left: -9999px !important;
+      z-index: -9999 !important;
+    }
+
+    [class*="tiiny"], [id*="tiiny"], a[href*="tiiny.host"], div[style*="linear-gradient(to right, rgb(217, 70, 239)"] {
+      display: none !important;
+      visibility: hidden !important;
+      opacity: 0 !important;
+      height: 0 !important;
+      pointer-events: none !important;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      height: 100dvh;
+      overflow: hidden;
+      display: flex;
+    }
+
+    #app-container {
+      display: flex;
+      width: 100%;
+      height: 100%;
+      position: relative;
+    }
+
+    #sidebar {
+      width: 100%;
+      max-width: 360px;
+      background-color: var(--panel-bg);
+      border-right: 1px solid rgba(0, 0, 0, 0.35);
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      z-index: 10;
+      flex-shrink: 0;
+      position: relative;
+    }
+
+    .sidebar-header {
+      padding: 10px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.2);
+      height: 60px;
+      flex-shrink: 0;
+    }
+
+    .user-profile-badge {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .avatar-sm {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #2b5278, #5288c1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 15px;
+      color: #fff;
+      flex-shrink: 0;
+      background-size: cover;
+      background-position: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .status-text {
+      font-size: 11px;
+      color: var(--online);
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      flex-shrink: 0;
+    }
+
+    .icon-action-btn {
+      background: none;
+      border: none;
+      color: var(--text-sub);
+      cursor: pointer;
+      padding: 8px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    .icon-action-btn:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text-main);
+    }
+
+    .icon-action-btn svg {
+      width: 20px;
+      height: 20px;
+      fill: currentColor;
+    }
+
+    .logout-btn {
+      background: none;
+      border: none;
+      color: var(--danger);
+      font-size: 12px;
+      cursor: pointer;
+      font-weight: 500;
+      padding: 4px 8px;
+      border-radius: 6px;
+      transition: background 0.2s;
+    }
+
+    .logout-btn:hover {
+      background: rgba(229, 57, 53, 0.1);
+    }
+
+    .search-box {
+      padding: 10px 14px;
+      background: var(--bg-dark);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.15);
+    }
+
+    .search-box svg {
+      width: 16px;
+      height: 16px;
+      fill: var(--text-sub);
+      flex-shrink: 0;
+    }
+
+    .search-box input {
+      width: 100%;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--text-main);
+      font-size: 14px;
+    }
+
+    .chats-list {
+      flex: 1;
+      overflow-y: auto;
+      list-style: none;
+    }
+
+    .chat-item {
+      display: flex;
+      align-items: center;
+      padding: 12px 16px;
+      gap: 12px;
+      cursor: pointer;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+      transition: background 0.15s ease;
+    }
+
+    .chat-item:hover {
+      background-color: var(--hover-item);
+    }
+
+    .chat-item.active {
+      background-color: var(--active-item);
+    }
+
+    .chat-item-avatar {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #4b6cb7, #182848);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 18px;
+      flex-shrink: 0;
+      background-size: cover;
+      background-position: center;
+      overflow: hidden;
+    }
+
+    .chat-item-avatar.bot {
+      background: linear-gradient(135deg, #0088cc, #00b4d8);
+    }
+
+    .chat-item-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .chat-item-title-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 4px;
+    }
+
+    .chat-item-name {
+      font-size: 15px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .chat-item-preview {
+      font-size: 13px;
+      color: var(--text-sub);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .verified-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 16px;
+      height: 16px;
+      background: var(--verified-blue);
+      color: #fff;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .verified-icon svg {
+      width: 10px;
+      height: 10px;
+      fill: #fff;
+    }
+
+    .fab-new-chat {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      background: var(--accent);
+      border: none;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+      cursor: pointer;
+      z-index: 15;
+      transition: transform 0.15s ease, background 0.15s;
+    }
+
+    .fab-new-chat:hover {
+      background: var(--accent-hover);
+      transform: scale(1.05);
+    }
+
+    .fab-new-chat svg {
+      width: 22px;
+      height: 22px;
+      fill: #fff;
+    }
+
+    #main-chat {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      background-color: var(--bg-dark);
+      position: relative;
+      min-width: 0;
+    }
+
+    .chat-header {
+      height: 60px;
+      background-color: var(--panel-bg);
+      padding: 8px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.25);
+      flex-shrink: 0;
+    }
+
+    .back-btn {
+      display: none;
+      background: none;
+      border: none;
+      color: var(--accent);
+      cursor: pointer;
+      padding: 6px;
+      margin-left: -6px;
+      border-radius: 50%;
+    }
+
+    .back-btn:hover {
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .back-btn svg {
+      width: 24px;
+      height: 24px;
+      fill: currentColor;
+    }
+
+    .chat-header-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .chat-header-name {
+      font-size: 16px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .chat-header-status {
+      font-size: 12px;
+      color: var(--offline);
+      transition: color 0.2s;
+    }
+
+    .chat-header-status.online {
+      color: var(--online);
+    }
+
+    .chat-header-status.typing {
+      color: var(--accent);
+      font-weight: 500;
+    }
+
+    .call-action-btn {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background: none;
+      border: none;
+      color: var(--text-sub);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    .call-action-btn:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text-main);
+    }
+
+    .call-action-btn svg {
+      width: 20px;
+      height: 20px;
+      fill: currentColor;
+    }
+
+    #messages-container {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .chat-empty-hint {
+      margin: auto;
+      background: rgba(0, 0, 0, 0.35);
+      padding: 12px 20px;
+      border-radius: 14px;
+      color: var(--text-sub);
+      font-size: 13px;
+      text-align: center;
+      max-width: 340px;
+    }
+
+    .message {
+      max-width: 75%;
+      padding: 8px 12px;
+      border-radius: 14px;
+      font-size: 15px;
+      line-height: 1.35;
+      word-wrap: break-word;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      animation: fadeIn 0.12s ease;
+      cursor: pointer;
+      user-select: text;
+    }
+
+    .message:hover {
+      filter: brightness(1.05);
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .message.incoming {
+      align-self: flex-start;
+      background-color: var(--msg-in);
+      border-bottom-left-radius: 3px;
+    }
+
+    .message.outgoing {
+      align-self: flex-end;
+      background-color: var(--msg-out);
+      border-bottom-right-radius: 3px;
+    }
+
+    .message.system-alert {
+      align-self: center;
+      background-color: #1a2634;
+      border: 1px solid rgba(51, 144, 236, 0.35);
+      max-width: 85%;
+      border-radius: 14px;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.25);
+      cursor: default;
+    }
+
+    .message.system-alert:hover {
+      filter: none;
+    }
+
+    .message-text {
+      white-space: pre-wrap;
+    }
+
+    .msg-media-image {
+      max-width: 100%;
+      max-height: 320px;
+      border-radius: 10px;
+      margin-bottom: 6px;
+      cursor: pointer;
+      display: block;
+      object-fit: cover;
+    }
+
+    .msg-file-attachment {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--file-card-bg);
+      padding: 8px 12px;
+      border-radius: 10px;
+      margin-bottom: 6px;
+      text-decoration: none;
+      color: var(--text-main);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .msg-file-icon {
+      width: 36px;
+      height: 36px;
+      background: var(--accent);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .msg-file-icon svg {
+      width: 18px;
+      height: 18px;
+      fill: #fff;
+    }
+
+    .msg-file-details {
+      min-width: 0;
+      flex: 1;
+    }
+
+    .msg-file-name {
+      font-size: 13px;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .msg-file-size {
+      font-size: 11px;
+      color: var(--text-sub);
+    }
+
+    .msg-voice-note {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 220px;
+      padding: 4px 0;
+    }
+
+    .voice-play-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--accent);
+      border: none;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    .voice-play-btn svg {
+      width: 16px;
+      height: 16px;
+      fill: #fff;
+    }
+
+    .voice-waveform-wrap {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .voice-progress-slider {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 4px;
+      border-radius: 2px;
+      background: rgba(255, 255, 255, 0.2);
+      outline: none;
+    }
+
+    .voice-progress-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #fff;
+      cursor: pointer;
+    }
+
+    .voice-time-label {
+      font-size: 11px;
+      color: var(--text-sub);
+    }
+
+    .code-badge {
+      display: block;
+      margin: 10px 0;
+      padding: 8px 16px;
+      background: #0f1620;
+      border: 1px dashed var(--accent);
+      border-radius: 8px;
+      font-size: 22px;
+      letter-spacing: 4px;
+      font-weight: 700;
+      color: #64b5f6;
+      text-align: center;
+      user-select: all;
+    }
+
+    .message-meta {
+      font-size: 10px;
+      color: var(--text-sub);
+      align-self: flex-end;
+      margin-top: 4px;
+      margin-left: 12px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    #attachment-preview-bar {
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 16px;
+      background: #151d27;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+      font-size: 13px;
+      color: var(--text-main);
+    }
+
+    .preview-file-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .preview-thumb {
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      object-fit: cover;
+      display: none;
+    }
+
+    .remove-attachment-btn {
+      background: none;
+      border: none;
+      color: var(--text-sub);
+      cursor: pointer;
+      font-size: 18px;
+      padding: 4px 8px;
+      line-height: 1;
+    }
+
+    #voice-record-bar {
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      height: 60px;
+      background: var(--panel-bg);
+      padding: 8px 16px;
+      border-top: 1px solid rgba(0, 0, 0, 0.25);
+    }
+
+    .record-status-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .record-pulse-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background-color: var(--danger);
+      animation: recordPulse 1s infinite alternate;
+    }
+
+    @keyframes recordPulse {
+      from { transform: scale(0.85); opacity: 0.6; }
+      to { transform: scale(1.25); opacity: 1; }
+    }
+
+    .record-timer-text {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--danger);
+    }
+
+    .record-actions-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .cancel-record-btn {
+      background: none;
+      border: none;
+      color: var(--text-sub);
+      font-size: 14px;
+      cursor: pointer;
+      padding: 8px 12px;
+      border-radius: 12px;
+    }
+
+    .cancel-record-btn:hover {
+      color: var(--danger);
+    }
+
+    .send-record-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--accent);
+      border: none;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+
+    .send-record-btn svg {
+      width: 18px;
+      height: 18px;
+      fill: #fff;
+    }
+
+    .chat-input-bar {
+      min-height: 60px;
+      background-color: var(--panel-bg);
+      padding: 8px 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+      border-top: 1px solid rgba(0, 0, 0, 0.25);
+    }
+
+    .attach-file-btn, .mic-record-btn {
+      width: 40px;
+      height: 40px;
+      border: none;
+      background: none;
+      color: var(--text-sub);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      transition: color 0.15s, background 0.15s;
+      flex-shrink: 0;
+    }
+
+    .attach-file-btn:hover, .mic-record-btn:hover {
+      color: var(--text-main);
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .attach-file-btn svg, .mic-record-btn svg {
+      width: 22px;
+      height: 22px;
+      fill: currentColor;
+    }
+
+    .chat-input-bar input[type="text"] {
+      flex: 1;
+      height: 42px;
+      background-color: var(--input-bg);
+      border: none;
+      outline: none;
+      padding: 0 16px;
+      border-radius: 21px;
+      color: var(--text-main);
+      font-size: 15px;
+    }
+
+    .send-icon-btn {
+      width: 42px;
+      height: 42px;
+      background-color: var(--accent);
+      border: none;
+      outline: none;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: background 0.15s;
+    }
+
+    .send-icon-btn svg {
+      width: 20px;
+      height: 20px;
+      fill: #fff;
+      margin-left: 2px;
+    }
+
+    #call-screen-overlay {
+      position: fixed;
+      inset: 0;
+      background: #090e14;
+      z-index: 5000;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      padding: 24px;
+    }
+
+    .call-top-bar {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      z-index: 10;
+    }
+
+    .call-partner-name {
+      font-size: 20px;
+      font-weight: 700;
+    }
+
+    .call-status-label {
+      font-size: 14px;
+      color: var(--text-sub);
+    }
+
+    .call-center-stage {
+      flex: 1;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    .call-avatar-pulse {
+      width: 130px;
+      height: 130px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #2b5278, #5288c1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 52px;
+      font-weight: 700;
+      box-shadow: 0 0 0 0 rgba(82, 136, 193, 0.6);
+      animation: callWave 2s infinite;
+      background-size: cover;
+      background-position: center;
+    }
+
+    @keyframes callWave {
+      0% { box-shadow: 0 0 0 0 rgba(82, 136, 193, 0.6); }
+      70% { box-shadow: 0 0 0 35px rgba(82, 136, 193, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(82, 136, 193, 0); }
+    }
+
+    #remote-video-elem {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 16px;
+      display: none;
+    }
+
+    #local-video-elem {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      width: 120px;
+      height: 160px;
+      object-fit: cover;
+      border-radius: 12px;
+      border: 2px solid rgba(255, 255, 255, 0.4);
+      display: none;
+      z-index: 20;
+      background: #000;
+      transform: scaleX(-1);
+    }
+
+    .call-controls-bar {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      z-index: 10;
+    }
+
+    .call-ctl-btn {
+      width: 54px;
+      height: 54px;
+      border-radius: 50%;
+      border: none;
+      background: rgba(255, 255, 255, 0.15);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .call-ctl-btn.active-off {
+      background: rgba(229, 57, 53, 0.8);
+    }
+
+    .call-ctl-btn.end-call {
+      background: var(--danger);
+      width: 60px;
+      height: 60px;
+    }
+
+    .call-ctl-btn svg {
+      width: 26px;
+      height: 26px;
+      fill: #fff;
+    }
+
+    .call-ctl-btn.pip-btn {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    .call-ctl-btn.pip-btn:hover {
+      background: rgba(255, 255, 255, 0.35);
+    }
+
+    #incoming-call-modal {
+      position: fixed;
+      top: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #1e2a38;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.7);
+      border-radius: 20px;
+      padding: 16px 20px;
+      width: 90%;
+      max-width: 380px;
+      z-index: 6000;
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      animation: dropDown 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+    }
+
+    @keyframes dropDown {
+      from { transform: translate(-50%, -60px); opacity: 0; }
+      to { transform: translate(-50%, 0); opacity: 1; }
+    }
+
+    .incoming-caller-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .inc-call-btn {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      border: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: #fff;
+    }
+
+    .inc-call-btn.accept {
+      background: var(--call-green);
+    }
+
+    .inc-call-btn.decline {
+      background: var(--danger);
+    }
+
+    .inc-call-btn svg {
+      width: 20px;
+      height: 20px;
+      fill: #fff;
+    }
+
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(5px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      z-index: 4000;
+    }
+
+    .auth-card {
+      background: var(--modal-bg);
+      border-radius: 18px;
+      width: 100%;
+      max-width: 360px;
+      padding: 26px 22px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+
+    .auth-logo {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #2b5278, #5288c1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 30px;
+      margin-bottom: 14px;
+    }
+
+    .auth-card h2 {
+      font-size: 19px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .auth-card p {
+      font-size: 13px;
+      color: var(--text-sub);
+      line-height: 1.45;
+      margin-bottom: 18px;
+    }
+
+    .auth-input {
+      width: 100%;
+      background: var(--input-bg);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      padding: 12px 14px;
+      border-radius: 10px;
+      color: var(--text-main);
+      font-size: 16px;
+      outline: none;
+      margin-bottom: 14px;
+      text-align: center;
+    }
+
+    .auth-input.code-style {
+      font-size: 20px;
+      letter-spacing: 2px;
+      font-weight: 600;
+    }
+
+    .auth-btn {
+      width: 100%;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      padding: 12px;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .auth-btn:hover {
+      background: var(--accent-hover);
+    }
+
+    .auth-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .auth-link {
+      margin-top: 14px;
+      font-size: 13px;
+      color: var(--accent);
+      cursor: pointer;
+      text-decoration: underline;
+    }
+
+    .settings-avatar-container {
+      position: relative;
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      margin-bottom: 14px;
+      cursor: pointer;
+    }
+
+    .settings-avatar-big {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #2b5278, #5288c1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+      font-weight: 700;
+      background-size: cover;
+      background-position: center;
+      border: 2px solid var(--accent);
+    }
+
+    .avatar-edit-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.45);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+
+    .settings-avatar-container:hover .avatar-edit-overlay {
+      opacity: 1;
+    }
+
+    .avatar-edit-overlay svg {
+      width: 24px;
+      height: 24px;
+      fill: #fff;
+    }
+
+    .admin-users-list {
+      width: 100%;
+      list-style: none;
+      margin-top: 10px;
+      max-height: 280px;
+      overflow-y: auto;
+      text-align: left;
+    }
+
+    .admin-user-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 12px;
+      background: rgba(0, 0, 0, 0.25);
+      border-radius: 8px;
+      margin-bottom: 6px;
+      font-size: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      gap: 8px;
+    }
+
+    .admin-actions-cell {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    .admin-user-kick-btn {
+      background: var(--danger);
+      color: #fff;
+      border: none;
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s, background 0.2s;
+    }
+
+    .admin-user-kick-btn:hover {
+      opacity: 0.85;
+    }
+
+    .admin-user-kick-btn.kicked {
+      background: rgba(255, 255, 255, 0.15);
+      color: var(--text-sub);
+    }
+
+    .admin-verify-toggle-btn {
+      background: rgba(51, 144, 236, 0.15);
+      border: 1px solid var(--verified-blue);
+      color: #64b5f6;
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    .admin-verify-toggle-btn:hover {
+      background: rgba(51, 144, 236, 0.3);
+    }
+
+    .admin-verify-toggle-btn.verified {
+      background: var(--verified-blue);
+      color: #fff;
+    }
+
+    .admin-approve-btn {
+      background: var(--call-green);
+      color: #fff;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s;
+      flex-shrink: 0;
+    }
+
+    .admin-approve-btn:hover {
+      opacity: 0.85;
+    }
+
+    .admin-code-tag {
+      display: inline-block;
+      background: #0f1620;
+      color: #64b5f6;
+      border: 1px dashed var(--accent);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      font-size: 12px;
+      margin-left: 4px;
+      word-break: break-all;
+    }
+
+    .admin-section-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #64b5f6;
+      margin: 12px 0 6px 0;
+      text-align: left;
+      width: 100%;
+    }
+
+    #toast-container {
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 7000;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      pointer-events: none;
+      width: 90%;
+      max-width: 360px;
+    }
+
+    .toast-msg {
+      background: rgba(23, 33, 43, 0.95);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: var(--text-main);
+      padding: 12px 16px;
+      border-radius: 12px;
+      font-size: 13px;
+      text-align: center;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
+    }
+
+    #image-viewer-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.9);
+      backdrop-filter: blur(8px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 4500;
+      cursor: pointer;
+      padding: 20px;
+    }
+
+    #image-viewer-modal img {
+      max-width: 95%;
+      max-height: 90vh;
+      border-radius: 8px;
+    }
+
+    #env-warning-banner {
+      display: none;
+      background: linear-gradient(90deg, #d32f2f, #c2185b);
+      color: #fff;
+      padding: 8px 12px;
+      font-size: 12px;
+      text-align: center;
+      z-index: 9999;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.4);
+    }
+
+    @media (max-width: 768px) {
+      #sidebar {
+        max-width: 100%;
+        width: 100%;
+      }
+
+      #main-chat {
+        position: absolute;
+        inset: 0;
+        z-index: 30;
+        display: none;
+      }
+
+      #app-container.chat-active #main-chat {
+        display: flex;
+      }
+
+      #app-container.chat-active #sidebar {
+        display: none;
+      }
+
+      .back-btn {
+        display: block;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div id="env-warning-banner">
+    ⚠️ Файл открыт локально (content://). Android блокирует микрофон и звонки для файлов из памяти. Откройте через веб-сервер (127.0.0.1) или хостинг (HTTPS).
+  </div>
+
+  <audio id="remote-audio-elem" autoplay playsinline style="display: none;"></audio>
+
+  <div id="toast-container"></div>
+
+  <!-- Модалка просмотра изображений -->
+  <div id="image-viewer-modal">
+    <img id="viewer-img" src="" alt="Просмотр">
+  </div>
+
+  <!-- Входящий звонок -->
+  <div id="incoming-call-modal">
+    <div class="incoming-caller-info">
+      <div class="avatar-sm" id="inc-caller-avatar">?</div>
+      <div>
+        <div style="font-weight: 700; font-size: 15px;" id="inc-caller-name">Имя</div>
+        <div style="font-size: 12px; color: var(--accent);" id="inc-call-type-label">Входящий аудиозвонок...</div>
+      </div>
+    </div>
+    <div style="display: flex; gap: 10px;">
+      <button class="inc-call-btn decline" id="inc-call-decline-btn" title="Отклонить">
+        <svg viewBox="0 0 24 24"><path d="M12 9c-1.6 0-3.15.25-4.6.72v3.1c0 .39-.23.74-.56.9-.98.49-1.87 1.12-2.66 1.85-.18.18-.43.28-.7.28-.28 0-.53-.11-.71-.29L.29 13.08a.996.996 0 0 1 0-1.41C3.28 8.77 7.42 7 12 7s8.72 1.77 11.71 4.67c.39.39.39 1.02 0 1.41l-2.48 2.48c-.18.18-.43.29-.71.29-.27 0-.52-.11-.7-.28-.79-.74-1.69-1.36-2.67-1.85-.33-.16-.56-.5-.56-.9v-3.1C15.15 9.25 13.6 9 12 9z"/></svg>
+      </button>
+      <button class="inc-call-btn accept" id="inc-call-accept-btn" title="Принять">
+        <svg viewBox="0 0 24 24"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Экран звонка -->
+  <div id="call-screen-overlay">
+    <div class="call-top-bar">
+      <div class="call-partner-display" id="call-partner-display" style="font-size: 20px; font-weight: 700;">@ник</div>
+      <div class="call-status-label" id="call-timer-display">Соединение...</div>
+    </div>
+
+    <div class="call-center-stage">
+      <div class="call-avatar-pulse" id="call-audio-avatar">?</div>
+      <video id="remote-video-elem" autoplay playsinline></video>
+      <video id="local-video-elem" autoplay playsinline muted></video>
+    </div>
+
+    <div class="call-controls-bar">
+      <button class="call-ctl-btn" id="call-mute-mic-btn" title="Микрофон">
+        <svg viewBox="0 0 24 24"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5-3c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>
+      </button>
+      <button class="call-ctl-btn" id="call-toggle-video-btn" title="Камера">
+        <svg viewBox="0 0 24 24"><path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/></svg>
+      </button>
+      <button class="call-ctl-btn pip-btn" id="call-pip-btn" title="Мини-окошко (Картинка в картинке)">
+        <svg viewBox="0 0 24 24"><path d="M19 7h-8v6h8V7zm2-4H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16.01H3V4.99h18v14.02z"/></svg>
+      </button>
+      <button class="call-ctl-btn end-call" id="call-hangup-btn" title="Завершить">
+        <svg viewBox="0 0 24 24"><path d="M12 9c-1.6 0-3.15.25-4.6.72v3.1c0 .39-.23.74-.56.9-.98.49-1.87 1.12-2.66 1.85-.18.18-.43.28-.7.28-.28 0-.53-.11-.71-.29L.29 13.08a.996.996 0 0 1 0-1.41C3.28 8.77 7.42 7 12 7s8.72 1.77 11.71 4.67c.39.39.39 1.02 0 1.41l-2.48 2.48c-.18.18-.43.29-.71.29-.27 0-.52-.11-.7-.28-.79-.74-1.69-1.36-2.67-1.85-.33-.16-.56-.5-.56-.9v-3.1C15.15 9.25 13.6 9 12 9z"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Действие с сообщением (Удаление) -->
+  <div id="msg-action-modal" class="modal-overlay" style="display: none;">
+    <div class="auth-card" style="max-width: 320px;">
+      <h3 style="font-size: 16px; margin-bottom: 6px;">Удаление сообщения</h3>
+      <p id="msg-action-preview" style="font-size: 13px; color: var(--text-sub); margin-bottom: 16px; max-height: 60px; overflow: hidden; text-overflow: ellipsis; word-break: break-all;"></p>
+      <button id="msg-delete-for-me-btn" class="auth-btn" style="background: rgba(255,255,255,0.12); margin-bottom: 8px;">🗑️ Удалить только у меня</button>
+      <button id="msg-delete-for-all-btn" class="auth-btn" style="background: var(--danger); margin-bottom: 8px;">💥 Удалить для обоих собеседников</button>
+      <button id="msg-action-cancel-btn" class="auth-btn" style="background: transparent; color: var(--text-sub); padding: 8px;">Отмена</button>
+    </div>
+  </div>
+
+  <!-- Модалка Очистки чата -->
+  <div id="clear-chat-modal" class="modal-overlay" style="display: none;">
+    <div class="auth-card" style="max-width: 340px;">
+      <div style="font-size: 28px; margin-bottom: 6px;">🧹</div>
+      <h2>Очистить диалог</h2>
+      <p>Выберите вариант очистки переписки в этом диалоге:</p>
+      <button id="clear-for-me-btn" class="auth-btn" style="background: rgba(255,255,255,0.12); margin-bottom: 10px;">Очистить только у меня</button>
+      <button id="clear-for-both-btn" class="auth-btn" style="background: var(--danger); margin-bottom: 10px;">Очистить для обоих собеседников 💥</button>
+      <button id="clear-cancel-btn" class="auth-btn" style="background: transparent; color: var(--text-sub); padding: 8px;">Отмена</button>
+    </div>
+  </div>
+
+  <!-- Авторизация -->
+  <div id="auth-modal" class="modal-overlay" style="display: none;">
+    <div class="auth-card">
+      <div class="auth-logo">✈️</div>
+      <h2>Phonogramm</h2>
+      <p>Введите ваш @никнейм для входа или быстрой регистрации.</p>
+      <input type="text" id="login-username" class="auth-input" placeholder="@никнейм" autocomplete="off" spellcheck="false">
+      <button id="login-submit-btn" class="auth-btn">Продолжить</button>
+    </div>
+  </div>
+
+  <!-- Ввод пароля Администратора -->
+  <div id="admin-pass-modal" class="modal-overlay" style="display: none;">
+    <div class="auth-card">
+      <div class="auth-logo" style="background: linear-gradient(135deg, #e53935, #b71c1c);">👑</div>
+      <h2>Вход Администратора</h2>
+      <p>Аккаунт создателя <b>@Shaban Durov</b> защищён. Введите секретный пароль администратора:</p>
+      <input type="password" id="admin-password-input" class="auth-input" placeholder="Пароль администратора..." autocomplete="current-password">
+      <button id="admin-password-submit-btn" class="auth-btn" style="background: linear-gradient(135deg, #e53935, #b71c1c);">Войти как Администратор ⚡</button>
+      <div class="auth-link" id="cancel-admin-pass-btn">Назад / Войти под другим ником</div>
+    </div>
+  </div>
+
+  <!-- Ввод проверочного кода при занятом аккаунте -->
+  <div id="code-modal" class="modal-overlay" style="display: none;">
+    <div class="auth-card">
+      <div class="auth-logo" style="background: linear-gradient(135deg, #5288c1, #2b5278);">🔐</div>
+      <h2 id="code-modal-title">Проверка устройства</h2>
+      <p id="code-instructions">Аккаунт сейчас открыт на другом устройстве. Мы отправили 5-значный код подтверждения в чат безопасности <b>Phonogramm</b> на активном устройстве.</p>
+      <input type="text" id="verify-code-input" class="auth-input code-style" placeholder="5-значный код..." autocomplete="off">
+      <button id="verify-submit-btn" class="auth-btn">Подтвердить вход</button>
+      <div class="auth-link" id="cancel-verify-btn">Назад / Войти под другим ником</div>
+    </div>
+  </div>
+
+  <!-- Создание нового диалога -->
+  <div id="new-chat-modal" class="modal-overlay" style="display: none;">
+    <div class="auth-card">
+      <h2>Новый диалог</h2>
+      <p>Введите никнейм контакта для начала переписки.</p>
+      <input type="text" id="new-chat-username" class="auth-input" placeholder="@никнейм" autocomplete="off" spellcheck="false">
+      <div style="display: flex; gap: 8px; width: 100%;">
+        <button id="cancel-new-chat-btn" class="auth-btn" style="background: rgba(255,255,255,0.12);">Отмена</button>
+        <button id="confirm-new-chat-btn" class="auth-btn">Открыть</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Модалка Настроек профиля -->
+  <div id="settings-modal" class="modal-overlay" style="display: none;">
+    <div class="auth-card">
+      <h2>Настройки профиля</h2>
+      <p>Нажмите на аватар для загрузки новой фотографии.</p>
+      
+      <input type="file" id="settings-avatar-input" accept="image/*" style="display: none;">
+      <div class="settings-avatar-container" id="settings-avatar-wrapper" title="Нажмите для смены аватара">
+        <div class="settings-avatar-big" id="settings-avatar-preview">?</div>
+        <div class="avatar-edit-overlay">
+          <svg viewBox="0 0 24 24"><path d="M3 4V1h2v3h3v2H5v3H3V6H0V4h3zm3 6V7h3V4h7l1.83 2H21c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H5c-1.1 0-2-.9-2-2V10h3zm7 9c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-3.2-5c0 1.77 1.43 3.2 3.2 3.2s3.2-1.43 3.2-3.2-1.43-3.2-3.2-3.2-3.2 1.43-3.2 3.2z"/></svg>
+        </div>
+      </div>
+
+      <div style="font-size: 15px; font-weight: 700; margin-bottom: 14px; display: flex; align-items: center; justify-content: center; gap: 5px;" id="settings-username-display">@ник</div>
+
+      <!-- Установка пароля аккаунта -->
+      <div style="width: 100%; margin-bottom: 14px; text-align: left;">
+        <label style="font-size: 12px; color: var(--text-sub); display: block; margin-bottom: 4px;">Секретный пароль аккаунта:</label>
+        <input type="password" id="settings-password-input" class="auth-input" placeholder="Установите пароль..." style="margin-bottom: 6px; font-size: 14px;">
+        <button id="save-account-pass-btn" class="auth-btn" style="background: rgba(82, 136, 193, 0.25); font-size: 13px; padding: 8px;">Сохранить пароль аккаунта</button>
+      </div>
+
+      <div id="admin-panel-entry-btn-wrap" style="display: none; width: 100%; margin-bottom: 12px;">
+        <button id="open-admin-btn" class="auth-btn" style="background: linear-gradient(135deg, #e53935, #b71c1c);">Панель администратора ⚡</button>
+      </div>
+
+      <button id="close-settings-btn" class="auth-btn" style="background: rgba(255,255,255,0.12);">Закрыть</button>
+    </div>
+  </div>
+
+  <!-- Модалка Панели Администратора -->
+  <div id="admin-modal" class="modal-overlay" style="display: none;">
+    <div class="auth-card" style="max-width: 480px;">
+      <div style="font-size: 26px; margin-bottom: 6px;">⚡</div>
+      <h2>Панель администратора</h2>
+      <p style="margin-bottom: 6px;">Управление пользователями, выдача галочек и кик сессий.</p>
+      
+      <div class="admin-section-title">🔑 Ожидают вход (код)</div>
+      <ul class="admin-users-list" id="admin-pending-list" style="max-height: 100px; margin-top: 4px;">
+        <li style="text-align: center; color: var(--text-sub); padding: 8px;">Нет активных запросов</li>
+      </ul>
+
+      <div class="admin-section-title" style="color: #64b5f6; margin-top: 14px;">👥 Пользователи (Галочки и Кик)</div>
+      <ul class="admin-users-list" id="admin-users-list" style="max-height: 250px; margin-top: 4px;">
+        <li style="text-align: center; color: var(--text-sub); padding: 10px;">Загрузка списка пользователей...</li>
+      </ul>
+
+      <button id="close-admin-btn" class="auth-btn" style="margin-top: 14px; background: rgba(255,255,255,0.12);">Закрыть</button>
+    </div>
+  </div>
+
+  <!-- Модалка подтверждения выхода -->
+  <div id="confirm-modal" class="modal-overlay" style="display: none;">
+    <div class="auth-card">
+      <h2 id="confirm-modal-title">Подтверждение</h2>
+      <p id="confirm-modal-text">Вы уверены?</p>
+      <div style="display: flex; gap: 8px; width: 100%;">
+        <button id="confirm-cancel-btn" class="auth-btn" style="background: rgba(255,255,255,0.12);">Отмена</button>
+        <button id="confirm-ok-btn" class="auth-btn" style="background: var(--danger);">Выйти</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="app-container">
+    
+    <aside id="sidebar">
+      <div class="sidebar-header">
+        <div class="user-profile-badge" id="profile-badge-btn" title="Настройки (3 клика для админки)">
+          <div class="avatar-sm" id="my-avatar">?</div>
+          <div>
+            <div style="font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 5px;">
+              <span id="my-username-display">Загрузка...</span>
+              <span class="verified-icon" id="my-verified-icon" style="display: none;">
+                <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+              </span>
+            </div>
+            <div class="status-text">В сети</div>
+          </div>
+        </div>
+        
+        <div class="header-actions">
+          <button class="icon-action-btn" id="header-settings-btn" title="Настройки профиля">
+            <svg viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
+          </button>
+          <button class="icon-action-btn" id="header-new-chat-btn" title="Новый диалог">
+            <svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+          </button>
+          <button class="logout-btn" id="logout-btn">Выйти</button>
+        </div>
+      </div>
+
+      <div class="search-box">
+        <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+        <input type="text" id="search-contacts-input" placeholder="Поиск контактов...">
+      </div>
+
+      <ul class="chats-list" id="chats-list"></ul>
+
+      <button class="fab-new-chat" id="fab-open-new" title="Новый диалог">
+        <svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+      </button>
+    </aside>
+
+    <main id="main-chat">
+      <div class="chat-header">
+        <button class="back-btn" id="chat-back-btn" aria-label="Назад" title="Назад к контактам">
+          <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+        </button>
+
+        <div class="chat-item-avatar" id="current-chat-avatar">?</div>
+
+        <div class="chat-header-info">
+          <div class="chat-header-name">
+            <span id="current-chat-title">Выберите контакт</span>
+            <span class="verified-icon" id="header-verified-icon" style="display: none;">
+              <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+            </span>
+          </div>
+          <div class="chat-header-status" id="current-chat-status">не в сети</div>
+        </div>
+
+        <div style="display: flex; gap: 4px;" id="call-buttons-group">
+          <button class="call-action-btn" id="start-audio-call-btn" title="Аудиозвонок">
+            <svg viewBox="0 0 24 24"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/></svg>
+          </button>
+          <button class="call-action-btn" id="start-video-call-btn" title="Видеозвонок">
+            <svg viewBox="0 0 24 24"><path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/></svg>
+          </button>
+          <button class="call-action-btn" id="chat-menu-btn" title="Очистить чат / Опции">
+            <svg viewBox="0 0 24 24"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <div id="messages-container">
+        <div class="chat-empty-hint">Выберите контакт из списка слева или начните новый диалог.</div>
+      </div>
+
+      <div id="attachment-preview-bar">
+        <div class="preview-file-info">
+          <img id="preview-image-elem" class="preview-thumb" src="" alt="">
+          <span id="preview-file-name">file.ext</span>
+        </div>
+        <button class="remove-attachment-btn" id="remove-attachment-btn" title="Удалить прикрепление">&times;</button>
+      </div>
+
+      <div id="voice-record-bar">
+        <div class="record-status-group">
+          <div class="record-pulse-dot"></div>
+          <div class="record-timer-text" id="record-timer-text">00:00</div>
+        </div>
+        <div class="record-actions-group">
+          <button class="cancel-record-btn" id="cancel-voice-btn">Отмена</button>
+          <button class="send-record-btn" id="send-voice-btn" title="Отправить запись">
+            <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="chat-input-bar" id="chat-input-bar">
+        <input type="file" id="hidden-file-input" style="display: none;">
+        <button class="attach-file-btn" id="attach-btn" title="Прикрепить фото или файл (до 600 КБ)">
+          <svg viewBox="0 0 24 24"><path d="M16.5 6v11.5c0 2.21-1.79 4-4 4s-4-1.79-4-4V5c0-1.38 1.12-2.5 2.5-2.5s2.5 1.12 2.5 2.5v10.5c0 .55-.45 1-1 1s-1-.45-1-1V6H10v9.5c0 1.38 1.12 2.5 2.5 2.5s2.5-1.12 2.5-2.5V5c0-2.21-1.79-4-4-4S7 2.79 7 5v12.5c0 3.04 2.46 5.5 5.5 5.5s5.5-2.46 5.5-5.5V6h-1.5z"/></svg>
+        </button>
+
+        <input type="text" id="message-text-input" placeholder="Написать сообщение..." autocomplete="off">
+        
+        <button class="mic-record-btn" id="mic-record-btn" title="Записать голосовое сообщение">
+          <svg viewBox="0 0 24 24"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5-3c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>
+        </button>
+
+        <button class="send-icon-btn" id="send-msg-btn" aria-label="Отправить">
+          <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+        </button>
+      </div>
+    </main>
+
+  </div>
+
+  <script>
+    // Энергоэффективная очистка сторонних баннеров хостинга через MutationObserver
+    const clearHostBanners = () => {
+      document.querySelectorAll('body > *').forEach(el => {
+        const allowedIds = ['app-container', 'toast-container', 'incoming-call-modal', 'call-screen-overlay', 'image-viewer-modal', 'env-warning-banner', 'remote-audio-elem', 'msg-action-modal', 'clear-chat-modal'];
+        const isAllowed = allowedIds.includes(el.id) || el.classList.contains('modal-overlay') || el.tagName === 'SCRIPT' || el.tagName === 'AUDIO';
+        if (!isAllowed) {
+          el.remove();
+        }
+      });
+      document.querySelectorAll('[class*="tiiny"], [id*="tiiny"], a[href*="tiiny.host"]').forEach(el => el.remove());
+    };
+    clearHostBanners();
+    window.addEventListener('DOMContentLoaded', clearHostBanners);
+    window.addEventListener('load', clearHostBanners);
+
+    try {
+      const bannerObserver = new MutationObserver(() => clearHostBanners());
+      bannerObserver.observe(document.body, { childList: true, subtree: true });
+    } catch (e) {}
+  </script>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
+    import { 
+      initializeFirestore,
+      getFirestore,
+      persistentLocalCache,
+      persistentMultipleTabManager,
+      doc, 
+      setDoc, 
+      getDoc, 
+      getDocs,
+      deleteDoc,
+      onSnapshot, 
+      collection, 
+      addDoc, 
+      query, 
+      where,
+      orderBy, 
+      serverTimestamp,
+      arrayUnion
+    } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
+
+    // =========================================================================
+    // НАСТРОЙКИ PUSH-УВЕДОМЛЕНИЙ (ONESIGNAL)
+    // =========================================================================
+    const ONESIGNAL_APP_ID = "31d55b1b-ee69-4349-ae37-bc50771a4e22"; 
+    const ONESIGNAL_REST_API_KEY = "os_v2_app_ghkvwg7onfbutlrxxrihogsoelptpyqskoeumvf5vnzzxjozch6mc4ydecvzvp742uld427gc6uktsnxnvd75itepqf3xqlrrbhjj4i";
+    // =========================================================================
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyB3P642LuXGXJAHgepw8G-sUQZj9GsOBeQ",
+      authDomain: "phonogramm-22d9f.firebaseapp.com",
+      projectId: "phonogramm-22d9f",
+      storageBucket: "phonogramm-22d9f.firebasestorage.app",
+      messagingSenderId: "553094425604",
+      appId: "1:553094425604:web:5c8c61888669979e339951"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    
+    // Адаптивное подключение Firestore с авто-определением Long Polling для стабильности через VPN
+    let db;
+    try {
+      db = initializeFirestore(app, {
+        localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+        experimentalAutoDetectLongPolling: true
+      });
+    } catch (e) {
+      try {
+        db = initializeFirestore(app, { experimentalAutoDetectLongPolling: true });
+      } catch (e2) {
+        db = getFirestore(app);
+      }
+    }
+
+    const ADMIN_MASTER_PASSWORD = "GitlerzzPupin2018";
+
+    const isLocalFileContext = location.protocol === 'content:' || location.protocol === 'file:';
+    if (isLocalFileContext) {
+      const banner = document.getElementById("env-warning-banner");
+      if (banner) banner.style.display = "block";
+    }
+
+    let deviceId = localStorage.getItem("pg_device_id");
+    if (!deviceId) {
+      deviceId = "dev_" + Math.random().toString(36).substring(2, 12) + "_" + Date.now();
+      localStorage.setItem("pg_device_id", deviceId);
+    }
+
+    let currentUsername = localStorage.getItem("pg_username");
+    let activeChatUser = null; 
+    let unsubscribeMessages = null;
+    let unsubscribeTyping = null;
+    let unsubscribeUserDoc = null;
+    let unsubscribeCallListener = null;
+    let unsubscribeCallDoc = null;
+    let unsubscribeCallerCandidates = null;
+    let unsubscribeCalleeCandidates = null;
+    let unsubscribeCodeAutoLogin = null;
+    let unsubscribeAdminLoginAlerts = null;
+    let unsubscribeUserPresence = null;
+    let unsubscribeVerifiedUsers = null;
+    let heartbeatInterval = null;
+    let typingTimeout = null;
+    let lastTypingSentTime = 0;
+    let sharedAudioCtx = null;
+
+    let renderedMessageIds = new Set();
+    let knownContacts = new Set();
+    let contactsAvatars = {};
+    let verifiedUsersSet = new Set();
+    let currentAttachment = null;
+    let myCurrentAvatarUrl = null;
+
+    let activeVoiceAudio = null;
+    let activeVoicePlayBtn = null;
+
+    let peerConnection = null;
+    let localStream = null;
+    let currentCallId = null;
+    let currentCallType = 'audio';
+    let callTimerInterval = null;
+    let callSeconds = 0;
+    let isMicMuted = false;
+    let isVideoOff = false;
+    let ringtoneInterval = null;
+    let candidateQueue = [];
+
+    let mediaRecorder = null;
+    let audioChunks = [];
+    let recordTimerInterval = null;
+    let recordDurationSeconds = 0;
+
+    let avatarClickCount = 0;
+    let avatarClickTimer = null;
+
+    // Контекст выбранного сообщения для удаления
+    let currentActionMsg = null;
+
+    // Инициализация фоновой службы OneSignal Web Push
+    window.OneSignalDeferred = window.OneSignalDeferred || [];
+    OneSignalDeferred.push(async function(OneSignal) {
+      if (ONESIGNAL_APP_ID) {
+        try {
+          await OneSignal.init({
+            appId: ONESIGNAL_APP_ID,
+            notifyButton: { enable: false },
+            allowLocalhostAsSecureOrigin: true
+          });
+          if (currentUsername) {
+            await OneSignal.login(currentUsername.toLowerCase());
+          }
+          if (OneSignal.Notifications && OneSignal.Notifications.requestPermission) {
+            await OneSignal.Notifications.requestPermission();
+          }
+        } catch (err) {
+          console.warn("OneSignal initialization note:", err);
+        }
+      }
+    });
+
+    // Функция отправки системного Push-уведомления
+    function sendPushViaOneSignal(targetUser, titleText, bodyText) {
+      if (!targetUser || !ONESIGNAL_APP_ID || !ONESIGNAL_REST_API_KEY) {
+        return;
+      }
+      const cleanTarget = String(targetUser).trim().toLowerCase();
+      const apiKey = String(ONESIGNAL_REST_API_KEY).trim();
+
+      fetch("https://api.onesignal.com/notifications", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json; charset=utf-8",
+          "Authorization": `Key ${apiKey}`
+        },
+        body: JSON.stringify({
+          app_id: ONESIGNAL_APP_ID,
+          include_aliases: { "external_id": [cleanTarget] },
+          target_channel: "push",
+          headings: { "en": titleText, "ru": titleText },
+          contents: { "en": bodyText, "ru": bodyText }
+        })
+      }).catch((err) => {
+        console.warn("Push dispatch error:", err);
+      });
+    }
+
+    // Устойчивый пул STUN-серверов с высокой проходимостью NAT
+    const rtcConfig = {
+      iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:stun1.l.google.com:19302' },
+        { urls: 'stun:stun2.l.google.com:19302' },
+        { urls: 'stun:stun.cloudflare.com:3478' }
+      ]
+    };
+
+    const appContainer = document.getElementById("app-container");
+    const authModal = document.getElementById("auth-modal");
+    const adminPassModal = document.getElementById("admin-pass-modal");
+    const codeModal = document.getElementById("code-modal");
+    const newChatModal = document.getElementById("new-chat-modal");
+    const settingsModal = document.getElementById("settings-modal");
+    const adminModal = document.getElementById("admin-modal");
+    const confirmModal = document.getElementById("confirm-modal");
+    const toastContainer = document.getElementById("toast-container");
+    const imageViewerModal = document.getElementById("image-viewer-modal");
+    const viewerImg = document.getElementById("viewer-img");
+
+    const msgActionModal = document.getElementById("msg-action-modal");
+    const msgActionPreview = document.getElementById("msg-action-preview");
+    const msgDeleteForMeBtn = document.getElementById("msg-delete-for-me-btn");
+    const msgDeleteForAllBtn = document.getElementById("msg-delete-for-all-btn");
+    const msgActionCancelBtn = document.getElementById("msg-action-cancel-btn");
+
+    const clearChatModal = document.getElementById("clear-chat-modal");
+    const clearForMeBtn = document.getElementById("clear-for-me-btn");
+    const clearForBothBtn = document.getElementById("clear-for-both-btn");
+    const clearCancelBtn = document.getElementById("clear-cancel-btn");
+    const chatMenuBtn = document.getElementById("chat-menu-btn");
+
+    const loginInput = document.getElementById("login-username");
+    const loginSubmitBtn = document.getElementById("login-submit-btn");
+
+    const adminPasswordInput = document.getElementById("admin-password-input");
+    const adminPasswordSubmitBtn = document.getElementById("admin-password-submit-btn");
+    const cancelAdminPassBtn = document.getElementById("cancel-admin-pass-btn");
+
+    const verifyCodeInput = document.getElementById("verify-code-input");
+    const verifySubmitBtn = document.getElementById("verify-submit-btn");
+    const cancelVerifyBtn = document.getElementById("cancel-verify-btn");
+
+    const profileBadgeBtn = document.getElementById("profile-badge-btn");
+    const myAvatar = document.getElementById("my-avatar");
+    const myUsernameDisplay = document.getElementById("my-username-display");
+    const myVerifiedIcon = document.getElementById("my-verified-icon");
+    const headerSettingsBtn = document.getElementById("header-settings-btn");
+    const logoutBtn = document.getElementById("logout-btn");
+    const headerNewChatBtn = document.getElementById("header-new-chat-btn");
+    const chatsList = document.getElementById("chats-list");
+    const searchInput = document.getElementById("search-contacts-input");
+    const fabOpenNew = document.getElementById("fab-open-new");
+
+    const settingsAvatarWrapper = document.getElementById("settings-avatar-wrapper");
+    const settingsAvatarInput = document.getElementById("settings-avatar-input");
+    const settingsAvatarPreview = document.getElementById("settings-avatar-preview");
+    const settingsUsernameDisplay = document.getElementById("settings-username-display");
+    const settingsPasswordInput = document.getElementById("settings-password-input");
+    const saveAccountPassBtn = document.getElementById("save-account-pass-btn");
+    const adminPanelEntryBtnWrap = document.getElementById("admin-panel-entry-btn-wrap");
+    const openAdminBtn = document.getElementById("open-admin-btn");
+    const closeSettingsBtn = document.getElementById("close-settings-btn");
+
+    const adminUsersList = document.getElementById("admin-users-list");
+    const closeAdminBtn = document.getElementById("close-admin-btn");
+
+    const newChatInput = document.getElementById("new-chat-username");
+    const confirmNewChatBtn = document.getElementById("confirm-new-chat-btn");
+    const cancelNewChatBtn = document.getElementById("cancel-new-chat-btn");
+
+    const chatBackBtn = document.getElementById("chat-back-btn");
+    const currentChatAvatar = document.getElementById("current-chat-avatar");
+    const currentChatTitle = document.getElementById("current-chat-title");
+    const headerVerifiedIcon = document.getElementById("header-verified-icon");
+    const currentChatStatus = document.getElementById("current-chat-status");
+    const messagesContainer = document.getElementById("messages-container");
+    const messageInput = document.getElementById("message-text-input");
+    const sendMsgBtn = document.getElementById("send-msg-btn");
+    const callButtonsGroup = document.getElementById("call-buttons-group");
+    const startAudioCallBtn = document.getElementById("start-audio-call-btn");
+    const startVideoCallBtn = document.getElementById("start-video-call-btn");
+
+    const attachBtn = document.getElementById("attach-btn");
+    const hiddenFileInput = document.getElementById("hidden-file-input");
+    const attachmentPreviewBar = document.getElementById("attachment-preview-bar");
+    const previewFileName = document.getElementById("preview-file-name");
+    const previewImageElem = document.getElementById("preview-image-elem");
+    const removeAttachmentBtn = document.getElementById("remove-attachment-btn");
+
+    const chatInputBar = document.getElementById("chat-input-bar");
+    const voiceRecordBar = document.getElementById("voice-record-bar");
+    const micRecordBtn = document.getElementById("mic-record-btn");
+    const cancelVoiceBtn = document.getElementById("cancel-voice-btn");
+    const sendVoiceBtn = document.getElementById("send-voice-btn");
+    const recordTimerText = document.getElementById("record-timer-text");
+
+    const incomingCallModal = document.getElementById("incoming-call-modal");
+    const incCallerAvatar = document.getElementById("inc-caller-avatar");
+    const incCallerName = document.getElementById("inc-caller-name");
+    const incCallTypeLabel = document.getElementById("inc-call-type-label");
+    const incCallAcceptBtn = document.getElementById("inc-call-accept-btn");
+    const incCallDeclineBtn = document.getElementById("inc-call-decline-btn");
+
+    const callScreenOverlay = document.getElementById("call-screen-overlay");
+    const callPartnerDisplay = document.getElementById("call-partner-display");
+    const callTimerDisplay = document.getElementById("call-timer-display");
+    const callAudioAvatar = document.getElementById("call-audio-avatar");
+    const remoteVideoElem = document.getElementById("remote-video-elem");
+    const localVideoElem = document.getElementById("local-video-elem");
+    const remoteAudioElem = document.getElementById("remote-audio-elem");
+    const callMuteMicBtn = document.getElementById("call-mute-mic-btn");
+    const callToggleVideoBtn = document.getElementById("call-toggle-video-btn");
+    const callHangupBtn = document.getElementById("call-hangup-btn");
+    const callPipBtn = document.getElementById("call-pip-btn");
+    let activeCallNotification = null;
+
+    // СТРОГОЕ ОПРЕДЕЛЕНИЕ СУПЕР-АДМИНИСТРАТОРА (только создатель @Shaban Durov)
+    function isAdministrator(u) {
+      if (!u) return false;
+      const clean = sanitizeUsername(u);
+      return clean === "shabandurov" || clean === "shaban_durov";
+    }
+
+    // ПРОВЕРКА ГАЛОЧКИ ВЕРИФИКАЦИИ (Администратор ИЛИ пользователь с выданной галочкой)
+    function isUserVerified(u) {
+      if (!u) return false;
+      const clean = sanitizeUsername(u);
+      return isAdministrator(clean) || verifiedUsersSet.has(clean);
+    }
+
+    function formatTimeAgo(millis) {
+      if (!millis) return "оффлайн";
+      const diffSec = Math.floor((Date.now() - millis) / 1000);
+      if (diffSec < 60) return "был(а) только что";
+      if (diffSec < 3600) return `был(а) ${Math.floor(diffSec / 60)} мин. назад`;
+      if (diffSec < 86400) return `был(а) ${Math.floor(diffSec / 3600)} ч. назад`;
+      return "был(а) давно";
+    }
+
+    function clearAllUserState() {
+      knownContacts.clear();
+      contactsAvatars = {};
+      myCurrentAvatarUrl = null;
+      currentAttachment = null;
+      activeChatUser = null;
+      renderedMessageIds.clear();
+
+      if (activeVoiceAudio) {
+        try { activeVoiceAudio.pause(); } catch(e) {}
+        activeVoiceAudio = null;
+        activeVoicePlayBtn = null;
+      }
+      
+      myAvatar.style.backgroundImage = "";
+      myAvatar.textContent = "?";
+      myUsernameDisplay.textContent = "";
+      myVerifiedIcon.style.display = "none";
+
+      settingsAvatarPreview.style.backgroundImage = "";
+      settingsAvatarPreview.textContent = "?";
+      settingsUsernameDisplay.textContent = "";
+      settingsPasswordInput.value = "";
+
+      chatsList.innerHTML = "";
+      messagesContainer.innerHTML = '<div class="chat-empty-hint">Выберите контакт из списка слева или начните новый диалог.</div>';
+      clearAttachment();
+      stopVoiceRecording(false);
+    }
+
+    function unlockAudioContext() {
+      try {
+        if (!sharedAudioCtx) {
+          sharedAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (sharedAudioCtx.state === "suspended") {
+          sharedAudioCtx.resume();
+        }
+      } catch (e) {}
+    }
+    document.addEventListener("touchstart", unlockAudioContext, { once: true, passive: true });
+    document.addEventListener("mousedown", unlockAudioContext, { once: true, passive: true });
+    document.addEventListener("keydown", unlockAudioContext, { once: true, passive: true });
+
+    function getAudioContext() {
+      unlockAudioContext();
+      return sharedAudioCtx;
+    }
+
+    function playChime() {
+      try {
+        const ctx = getAudioContext();
+        if (!ctx) return;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(587.33, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.08);
+        gain.gain.setValueAtTime(0.12, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.22);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.22);
+      } catch (e) {}
+    }
+
+    function startRingtoneSound() {
+      stopRingtoneSound();
+      ringtoneInterval = setInterval(() => {
+        try {
+          const ctx = getAudioContext();
+          if (!ctx) return;
+          const osc1 = ctx.createOscillator();
+          const osc2 = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc1.type = "sine";
+          osc2.type = "sine";
+          osc1.frequency.setValueAtTime(440, ctx.currentTime);
+          osc2.frequency.setValueAtTime(480, ctx.currentTime);
+          gain.gain.setValueAtTime(0.1, ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.2);
+          osc1.connect(gain);
+          osc2.connect(gain);
+          gain.connect(ctx.destination);
+          osc1.start();
+          osc2.start();
+          osc1.stop(ctx.currentTime + 1.2);
+          osc2.stop(ctx.currentTime + 1.2);
+        } catch (e) {}
+      }, 2500);
+    }
+
+    function stopRingtoneSound() {
+      if (ringtoneInterval) {
+        clearInterval(ringtoneInterval);
+        ringtoneInterval = null;
+      }
+    }
+
+    function sanitizeUsername(input) {
+      if (!input) return "";
+      return String(input).trim().replace(/^@/, "").replace(/[^a-zA-Z0-9_а-яА-ЯёЁ-]/g, "").toLowerCase();
+    }
+
+    function escapeHtml(str) {
+      if (!str) return "";
+      return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function formatBytes(bytes) {
+      if (!+bytes) return '0 B';
+      const k = 1024;
+      const sizes = ['B', 'KB', 'MB', 'GB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
+    }
+
+    async function requestNotificationPermission() {
+      if ('Notification' in window && Notification.permission === 'default') {
+        try {
+          await Notification.requestPermission();
+        } catch (e) {}
+      }
+    }
+
+    function sendSystemNotification(title, options = {}, onClick = null) {
+      if (!('Notification' in window) || Notification.permission !== 'granted') return null;
+      try {
+        const notif = new Notification(title, {
+          icon: 'https://cdn-icons-png.flaticon.com/512/906/906377.png',
+          badge: 'https://cdn-icons-png.flaticon.com/512/906/906377.png',
+          vibrate: [200, 100, 200],
+          ...options
+        });
+        if (onClick) {
+          notif.onclick = () => {
+            window.focus();
+            onClick();
+            notif.close();
+          };
+        }
+        return notif;
+      } catch (err) {
+        return null;
+      }
+    }
+
+    function showToast(text) {
+      const existing = toastContainer.lastElementChild;
+      if (existing && existing.textContent === text) return;
+
+      const toast = document.createElement("div");
+      toast.className = "toast-msg";
+      toast.textContent = text;
+      toastContainer.appendChild(toast);
+      setTimeout(() => {
+        toast.style.opacity = "0";
+        toast.style.transition = "opacity 0.3s";
+        setTimeout(() => toast.remove(), 300);
+      }, 3500);
+    }
+
+    function showConfirmModal(text, onConfirm) {
+      const modalText = document.getElementById("confirm-modal-text");
+      const okBtn = document.getElementById("confirm-ok-btn");
+      const cancelBtn = document.getElementById("confirm-cancel-btn");
+
+      modalText.textContent = text;
+      confirmModal.style.display = "flex";
+
+      const cleanup = () => {
+        confirmModal.style.display = "none";
+        okBtn.onclick = null;
+        cancelBtn.onclick = null;
+      };
+
+      okBtn.onclick = () => {
+        cleanup();
+        onConfirm();
+      };
+
+      cancelBtn.onclick = cleanup;
+    }
+
+    imageViewerModal.addEventListener("click", () => {
+      imageViewerModal.style.display = "none";
+      viewerImg.src = "";
+    });
+
+    window.openImageViewer = (src) => {
+      viewerImg.src = src;
+      imageViewerModal.style.display = "flex";
+    };
+
+    function setElementAvatar(elem, username, customAvatarUrl) {
+      if (!elem) return;
+      if (customAvatarUrl) {
+        elem.style.backgroundImage = `url("${customAvatarUrl}")`;
+        elem.textContent = "";
+      } else {
+        elem.style.backgroundImage = "";
+        elem.textContent = username ? username[0].toUpperCase() : "?";
+      }
+    }
+
+    chatBackBtn.addEventListener("click", () => {
+      appContainer.classList.remove("chat-active");
+    });
+
+    if (!currentUsername) {
+      showAuthModal();
+    } else {
+      initAppSession(currentUsername);
+    }
+
+    function showAuthModal() {
+      authModal.style.display = "flex";
+      adminPassModal.style.display = "none";
+      codeModal.style.display = "none";
+      loginInput.value = "";
+      setTimeout(() => loginInput.focus(), 100);
+    }
+
+    loginSubmitBtn.addEventListener("click", handleLoginSubmit);
+    loginInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") handleLoginSubmit();
+    });
+
+    async function handleLoginSubmit() {
+      const rawUser = sanitizeUsername(loginInput.value);
+      if (!rawUser) {
+        showToast("Введите корректный никнейм");
+        return;
+      }
+
+      loginSubmitBtn.disabled = true;
+      loginSubmitBtn.textContent = "Проверка...";
+
+      // 1. АДМИНИСТРАТОР
+      if (isAdministrator(rawUser)) {
+        authModal.style.display = "none";
+        adminPassModal.style.display = "flex";
+        adminPasswordInput.value = "";
+        adminPasswordInput.focus();
+        window.tempAdminLoginUser = rawUser;
+        loginSubmitBtn.disabled = false;
+        loginSubmitBtn.textContent = "Продолжить";
+        return;
+      }
+
+      // 2. ОБЫЧНЫЙ ПОЛЬЗОВАТЕЛЬ
+      try {
+        const userRef = doc(db, "users", rawUser);
+        let userSnap = null;
+        try {
+          userSnap = await getDoc(userRef);
+        } catch (fetchErr) {
+          userSnap = null;
+        }
+
+        if (!userSnap || !userSnap.exists()) {
+          await setDoc(userRef, {
+            username: rawUser,
+            deviceId: deviceId,
+            sessionActive: true,
+            isOnline: true,
+            isKicked: false,
+            createdAt: serverTimestamp(),
+            lastOnline: serverTimestamp(),
+            lastOnlineMillis: Date.now(),
+            contacts: []
+          }, { merge: true });
+
+          await addDoc(collection(db, `messages_system_${rawUser}`), {
+            text: `👋 Добро пожаловать в Phonogramm!\n\nЭто ваш официальный чат безопасности. Здесь вы будете получать сервисные уведомления и одноразовые коды для подтверждения доступа при входе с других устройств.`,
+            sender: "phonogramm",
+            timestamp: serverTimestamp(),
+            localCreated: Date.now()
+          });
+
+          localStorage.setItem("pg_username", rawUser);
+          authModal.style.display = "none";
+          initAppSession(rawUser);
+          return;
+        }
+
+        const userData = userSnap.data();
+        const currentDev = userData.deviceId || "";
+        const isKicked = userData.isKicked === true || !currentDev || currentDev === "logged_out" || String(currentDev).startsWith("kicked_") || userData.sessionActive === false;
+
+        const now = Date.now();
+        const lastMillis = userData.lastOnlineMillis || (userData.lastOnline?.toMillis ? userData.lastOnline.toMillis() : (userData.lastOnline?.seconds ? userData.lastOnline.seconds * 1000 : 0));
+        const timeDiff = now - lastMillis;
+        const isCurrentlyOccupied = !isKicked && userData.isOnline === true && userData.sessionActive === true && (timeDiff < 35000 && timeDiff > -20000);
+
+        if (!isCurrentlyOccupied || currentDev === deviceId) {
+          await setDoc(userRef, {
+            deviceId: deviceId,
+            sessionActive: true,
+            isOnline: true,
+            isKicked: false,
+            pendingAuth: null,
+            lastOnline: serverTimestamp(),
+            lastOnlineMillis: Date.now()
+          }, { merge: true });
+
+          localStorage.setItem("pg_username", rawUser);
+          authModal.style.display = "none";
+          codeModal.style.display = "none";
+          initAppSession(rawUser);
+        } else {
+          const verifyCode = String(Math.floor(10000 + Math.random() * 90000));
+
+          await setDoc(userRef, {
+            pendingAuth: {
+              code: verifyCode,
+              reqDevice: deviceId,
+              reqAt: Date.now()
+            }
+          }, { merge: true });
+
+          await addDoc(collection(db, `messages_system_${rawUser}`), {
+            text: `🔐 Одноразовый код безопасности для входа с нового устройства:\n\nCODE_BLOCK:${verifyCode}\n\nНикому не сообщайте этот код.`,
+            sender: "phonogramm",
+            timestamp: serverTimestamp(),
+            localCreated: Date.now()
+          });
+
+          authModal.style.display = "none";
+          codeModal.style.display = "flex";
+          verifyCodeInput.value = "";
+          verifyCodeInput.focus();
+          window.tempLoginUsername = rawUser;
+
+          if (unsubscribeCodeAutoLogin) unsubscribeCodeAutoLogin();
+          unsubscribeCodeAutoLogin = onSnapshot(userRef, (s) => {
+            if (s.exists()) {
+              const updated = s.data();
+              if (updated.deviceId === deviceId) {
+                if (unsubscribeCodeAutoLogin) {
+                  unsubscribeCodeAutoLogin();
+                  unsubscribeCodeAutoLogin = null;
+                }
+                codeModal.style.display = "none";
+                localStorage.setItem("pg_username", rawUser);
+                showToast("Вход подтвержден! ✅");
+                initAppSession(rawUser);
+              }
+            }
+          });
+        }
+      } catch (err) {
+        showToast("Ошибка подключения: " + err.message);
+      } finally {
+        loginSubmitBtn.disabled = false;
+        loginSubmitBtn.textContent = "Продолжить";
+      }
+    }
+
+    adminPasswordSubmitBtn.addEventListener("click", handleAdminPasswordSubmit);
+    adminPasswordInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") handleAdminPasswordSubmit();
+    });
+
+    async function handleAdminPasswordSubmit() {
+      const pass = adminPasswordInput.value.trim();
+      const rawUser = window.tempAdminLoginUser || "shabandurov";
+
+      if (pass !== ADMIN_MASTER_PASSWORD) {
+        showToast("❌ Неверный пароль администратора!");
+        adminPasswordInput.value = "";
+        adminPasswordInput.focus();
+        return;
+      }
+
+      adminPasswordSubmitBtn.disabled = true;
+      adminPasswordSubmitBtn.textContent = "Вход...";
+
+      try {
+        const userRef = doc(db, "users", rawUser);
+        await setDoc(userRef, {
+          username: rawUser,
+          deviceId: deviceId,
+          sessionActive: true,
+          isOnline: true,
+          isKicked: false,
+          pendingAuth: null,
+          lastOnline: serverTimestamp(),
+          lastOnlineMillis: Date.now()
+        }, { merge: true });
+
+        localStorage.setItem("pg_username", rawUser);
+        adminPassModal.style.display = "none";
+        initAppSession(rawUser);
+        showToast("Добро пожаловать, Shaban Durov! ⚡");
+      } catch (err) {
+        showToast("Ошибка входа: " + err.message);
+      } finally {
+        adminPasswordSubmitBtn.disabled = false;
+        adminPasswordSubmitBtn.textContent = "Войти как Администратор ⚡";
+      }
+    }
+
+    cancelAdminPassBtn.addEventListener("click", () => {
+      adminPassModal.style.display = "none";
+      showAuthModal();
+    });
+
+    verifySubmitBtn.addEventListener("click", handleVerifySubmit);
+    verifyCodeInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") handleVerifySubmit();
+    });
+
+    async function handleVerifySubmit() {
+      const codeOrPass = verifyCodeInput.value.trim();
+      const targetUser = window.tempLoginUsername;
+      if (!codeOrPass || !targetUser) {
+        showToast("Введите код или пароль!");
+        return;
+      }
+
+      verifySubmitBtn.disabled = true;
+      verifySubmitBtn.textContent = "Проверка...";
+
+      try {
+        const userRef = doc(db, "users", targetUser);
+        const userSnap = await getDoc(userRef);
+
+        if (!userSnap.exists()) {
+          showToast("Пользователь не найден.");
+          return;
+        }
+
+        const data = userSnap.data();
+        const isCodeValid = data.pendingAuth && String(data.pendingAuth.code).toLowerCase() === codeOrPass.toLowerCase();
+        const isPasswordValid = data.password && String(data.password) === codeOrPass;
+
+        if (isCodeValid || isPasswordValid) {
+          await setDoc(userRef, {
+            deviceId: deviceId,
+            sessionActive: true,
+            isOnline: true,
+            isKicked: false,
+            pendingAuth: null,
+            lastOnline: serverTimestamp(),
+            lastOnlineMillis: Date.now()
+          }, { merge: true });
+
+          await addDoc(collection(db, `messages_system_${targetUser}`), {
+            text: `✅ Вход подтвержден на новом устройстве. Предыдущая сессия завершена.`,
+            sender: "phonogramm",
+            timestamp: serverTimestamp(),
+            localCreated: Date.now()
+          });
+
+          localStorage.setItem("pg_username", targetUser);
+          codeModal.style.display = "none";
+          initAppSession(targetUser);
+        } else {
+          showToast("Неверный проверочный код или пароль!");
+          verifyCodeInput.value = "";
+          verifyCodeInput.focus();
+        }
+      } catch (err) {
+        showToast("Ошибка: " + err.message);
+      } finally {
+        verifySubmitBtn.disabled = false;
+        verifySubmitBtn.textContent = "Подтвердить вход";
+      }
+    }
+
+    cancelVerifyBtn.addEventListener("click", () => {
+      if (unsubscribeCodeAutoLogin) {
+        unsubscribeCodeAutoLogin();
+        unsubscribeCodeAutoLogin = null;
+      }
+      codeModal.style.display = "none";
+      showAuthModal();
+    });
+
+    // Функция обновления отображения галочек по всему интерфейсу
+    function updateAllVerifiedBadges() {
+      if (currentUsername) {
+        myVerifiedIcon.style.display = isUserVerified(currentUsername) ? "inline-flex" : "none";
+      }
+      if (activeChatUser) {
+        if (activeChatUser === "phonogramm") {
+          headerVerifiedIcon.style.display = "inline-flex";
+        } else {
+          headerVerifiedIcon.style.display = isUserVerified(activeChatUser) ? "inline-flex" : "none";
+        }
+      }
+      renderChatList(Array.from(knownContacts));
+    }
+
+    // Слушатель всех верифицированных пользователей базы в реальном времени
+    function startVerifiedUsersListener() {
+      if (unsubscribeVerifiedUsers) unsubscribeVerifiedUsers();
+      unsubscribeVerifiedUsers = onSnapshot(collection(db, "users"), (snapshot) => {
+        snapshot.docChanges().forEach(change => {
+          const u = sanitizeUsername(change.doc.id);
+          const data = change.doc.data();
+          if (data && (data.isVerified === true || isAdministrator(u))) {
+            verifiedUsersSet.add(u);
+          } else if (!isAdministrator(u)) {
+            verifiedUsersSet.delete(u);
+          }
+        });
+        updateAllVerifiedBadges();
+      }, () => {});
+    }
+
+    async function initAppSession(username) {
+      clearAllUserState();
+      currentUsername = username;
+      myUsernameDisplay.textContent = "@" + username;
+
+      // НАДЕЖНАЯ ПРОВЕРКА НА КИК ИЗ БАЗЫ
+      const userDocRef = doc(db, "users", username);
+      try {
+        const checkSnap = await getDoc(userDocRef);
+        if (checkSnap.exists()) {
+          const d = checkSnap.data();
+          const wasKicked = d.isKicked === true || 
+                            (d.deviceId && String(d.deviceId).startsWith("kicked_")) || 
+                            (d.sessionActive === false && d.deviceId !== deviceId);
+          if (wasKicked) {
+            localStorage.removeItem("pg_username");
+            currentUsername = null;
+            showToast("⚠️ Вы были исключены администратором из аккаунта.");
+            showAuthModal();
+            return;
+          }
+          if (d.isVerified) {
+            verifiedUsersSet.add(sanitizeUsername(username));
+          }
+        }
+      } catch (err) {}
+
+      updateAllVerifiedBadges();
+      startVerifiedUsersListener();
+      requestNotificationPermission();
+
+      // Привязка OneSignal к текущему пользователю
+      if (window.OneSignalDeferred) {
+        window.OneSignalDeferred.push(async function(OneSignal) {
+          if (ONESIGNAL_APP_ID) {
+            try { 
+              await OneSignal.login(username.toLowerCase()); 
+              if (OneSignal.Notifications && OneSignal.Notifications.requestPermission) {
+                await OneSignal.Notifications.requestPermission();
+              }
+            } catch (e) {}
+          }
+        });
+      }
+
+      if (isAdministrator(username)) {
+        startAdminLoginAlerts();
+      }
+
+      setDoc(userDocRef, {
+        username: username,
+        deviceId: deviceId,
+        sessionActive: true,
+        isOnline: true,
+        isKicked: false,
+        lastOnline: serverTimestamp(),
+        lastOnlineMillis: Date.now()
+      }, { merge: true }).catch(() => {});
+
+      clearInterval(heartbeatInterval);
+      heartbeatInterval = setInterval(() => {
+        if (currentUsername) {
+          setDoc(doc(db, "users", currentUsername), {
+            sessionActive: true,
+            isOnline: !document.hidden,
+            lastOnline: serverTimestamp(),
+            lastOnlineMillis: Date.now()
+          }, { merge: true }).catch(() => {});
+        }
+      }, 10000);
+
+      if (unsubscribeUserDoc) unsubscribeUserDoc();
+      unsubscribeUserDoc = onSnapshot(userDocRef, (snap) => {
+        if (snap.exists()) {
+          const data = snap.data();
+          if (data.isKicked === true || (data.deviceId && String(data.deviceId).startsWith("kicked_"))) {
+            showToast("⚠️ Вы были исключены администратором из аккаунта.");
+            setTimeout(() => logoutUser(true), 800);
+          } else if (data.deviceId && data.deviceId !== deviceId && data.deviceId !== "logged_out" && data.sessionActive !== false) {
+            showToast("⚠️ Ваша сессия завершена на этом устройстве.");
+            setTimeout(() => logoutUser(true), 800);
+          } else {
+            if (data.isVerified) {
+              verifiedUsersSet.add(sanitizeUsername(username));
+            } else if (!isAdministrator(username)) {
+              verifiedUsersSet.delete(sanitizeUsername(username));
+            }
+            updateAllVerifiedBadges();
+
+            if (data.avatarUrl) {
+              myCurrentAvatarUrl = data.avatarUrl;
+              setElementAvatar(myAvatar, username, myCurrentAvatarUrl);
+              setElementAvatar(settingsAvatarPreview, username, myCurrentAvatarUrl);
+            }
+            if (data.password) {
+              settingsPasswordInput.value = data.password;
+            }
+            const remoteContacts = data.contacts || [];
+            knownContacts.clear();
+            remoteContacts.forEach(c => knownContacts.add(c));
+            loadContactsProfilesAndRender();
+          }
+        }
+      }, () => {});
+
+      startIncomingCallsListener();
+
+      if (window.innerWidth > 768) {
+        openChat("phonogramm");
+      } else {
+        renderChatList(Array.from(knownContacts));
+      }
+    }
+
+    document.addEventListener("visibilitychange", () => {
+      if (currentUsername) {
+        setDoc(doc(db, "users", currentUsername), {
+          isOnline: !document.hidden,
+          lastOnline: serverTimestamp(),
+          lastOnlineMillis: Date.now()
+        }, { merge: true }).catch(() => {});
+      }
+    });
+
+    const setOfflineNow = () => {
+      if (currentUsername) {
+        setDoc(doc(db, "users", currentUsername), {
+          isOnline: false,
+          sessionActive: false,
+          lastOnline: serverTimestamp(),
+          lastOnlineMillis: Date.now()
+        }, { merge: true }).catch(() => {});
+      }
+    };
+    window.addEventListener("pagehide", setOfflineNow);
+    window.addEventListener("beforeunload", setOfflineNow);
+
+    async function loadContactsProfilesAndRender() {
+      const contactsArr = Array.from(knownContacts);
+      for (const contact of contactsArr) {
+        if (contact && contact !== "phonogramm" && contactsAvatars[contact] === undefined) {
+          contactsAvatars[contact] = "";
+          getDoc(doc(db, "users", contact)).then(uSnap => {
+            if (uSnap.exists()) {
+              const uDat = uSnap.data();
+              contactsAvatars[contact] = uDat.avatarUrl || "";
+              if (uDat.isVerified) {
+                verifiedUsersSet.add(sanitizeUsername(contact));
+              } else if (!isAdministrator(contact)) {
+                verifiedUsersSet.delete(sanitizeUsername(contact));
+              }
+              renderChatList(Array.from(knownContacts));
+            }
+          }).catch(() => {
+            contactsAvatars[contact] = "";
+          });
+        }
+      }
+      renderChatList(contactsArr);
+    }
+
+    logoutBtn.addEventListener("click", () => {
+      showConfirmModal("Выйти из аккаунта на этом устройстве?", () => logoutUser(false));
+    });
+
+    async function logoutUser(isForced = false) {
+      clearInterval(heartbeatInterval);
+      const u = currentUsername;
+
+      if (window.OneSignalDeferred) {
+        window.OneSignalDeferred.push(async function(OneSignal) {
+          try { await OneSignal.logout(); } catch (e) {}
+        });
+      }
+      
+      if (u) {
+        try {
+          await Promise.race([
+            setDoc(doc(db, "users", u), {
+              deviceId: isForced ? "kicked_" + Date.now() : "logged_out",
+              sessionActive: false,
+              isOnline: false,
+              pendingAuth: null,
+              lastOnline: serverTimestamp(),
+              lastOnlineMillis: Date.now()
+            }, { merge: true }),
+            new Promise(res => setTimeout(res, 1000))
+          ]);
+        } catch (e) {}
+      }
+
+      localStorage.removeItem("pg_username");
+      currentUsername = null;
+      if (unsubscribeUserDoc) { unsubscribeUserDoc(); unsubscribeUserDoc = null; }
+      if (unsubscribeMessages) { unsubscribeMessages(); unsubscribeMessages = null; }
+      if (unsubscribeTyping) { unsubscribeTyping(); unsubscribeTyping = null; }
+      if (unsubscribeUserPresence) { unsubscribeUserPresence(); unsubscribeUserPresence = null; }
+      if (unsubscribeVerifiedUsers) { unsubscribeVerifiedUsers(); unsubscribeVerifiedUsers = null; }
+      if (unsubscribeCallListener) { unsubscribeCallListener(); unsubscribeCallListener = null; }
+      if (unsubscribeAdminLoginAlerts) { unsubscribeAdminLoginAlerts(); unsubscribeAdminLoginAlerts = null; }
+      terminateCall();
+
+      clearAllUserState();
+      appContainer.classList.remove("chat-active");
+      showAuthModal();
+    }
+
+    function renderChatList(contacts) {
+      chatsList.innerHTML = "";
+      const filter = searchInput ? searchInput.value.trim().toLowerCase() : "";
+
+      const botItem = document.createElement("li");
+      botItem.className = `chat-item ${activeChatUser === "phonogramm" ? "active" : ""}`;
+      botItem.innerHTML = `
+        <div class="chat-item-avatar bot">✈️</div>
+        <div class="chat-item-info">
+          <div class="chat-item-title-row">
+            <span class="chat-item-name">
+              Phonogramm
+              <span class="verified-icon"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></span>
+            </span>
+          </div>
+          <div class="chat-item-preview">Служебные оповещения безопасности</div>
+        </div>
+      `;
+      botItem.onclick = () => openChat("phonogramm");
+      if (!filter || "phonogramm".includes(filter)) {
+        chatsList.appendChild(botItem);
+      }
+
+      contacts.forEach(contactUser => {
+        if (!contactUser || contactUser === "phonogramm") return;
+        const item = document.createElement("li");
+        item.className = `chat-item ${activeChatUser === contactUser ? "active" : ""}`;
+
+        const avatarWrap = document.createElement("div");
+        avatarWrap.className = "chat-item-avatar";
+        setElementAvatar(avatarWrap, contactUser, contactsAvatars[contactUser]);
+
+        const isContactVerified = isUserVerified(contactUser);
+
+        const infoWrap = document.createElement("div");
+        infoWrap.className = "chat-item-info";
+        infoWrap.innerHTML = `
+          <div class="chat-item-title-row">
+            <span class="chat-item-name">
+              @${escapeHtml(contactUser)}
+              ${isContactVerified ? '<span class="verified-icon"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></span>' : ''}
+            </span>
+          </div>
+          <div class="chat-item-preview">Личные сообщения</div>
+        `;
+
+        item.appendChild(avatarWrap);
+        item.appendChild(infoWrap);
+        item.onclick = () => openChat(contactUser);
+        
+        if (!filter || contactUser.toLowerCase().includes(filter)) {
+          chatsList.appendChild(item);
+        }
+      });
+    }
+
+    function openChat(targetUser) {
+      activeChatUser = targetUser;
+      appContainer.classList.add("chat-active");
+      clearAttachment();
+      stopVoiceRecording(false);
+      renderedMessageIds.clear();
+
+      document.querySelectorAll(".chat-item").forEach(el => el.classList.remove("active"));
+
+      if (unsubscribeUserPresence) {
+        unsubscribeUserPresence();
+        unsubscribeUserPresence = null;
+      }
+
+      if (targetUser === "phonogramm") {
+        currentChatTitle.textContent = "Phonogramm";
+        headerVerifiedIcon.style.display = "inline-flex";
+        currentChatAvatar.textContent = "✈️";
+        currentChatAvatar.style.backgroundImage = "";
+        currentChatAvatar.className = "chat-item-avatar bot";
+        currentChatStatus.textContent = "служебные уведомления";
+        currentChatStatus.className = "chat-header-status";
+        messageInput.placeholder = "Этот чат доступен только для чтения";
+        messageInput.disabled = true;
+        sendMsgBtn.disabled = true;
+        attachBtn.style.display = "none";
+        micRecordBtn.style.display = "none";
+        callButtonsGroup.style.display = "none";
+        chatMenuBtn.style.display = "none";
+        listenSystemChat();
+      } else {
+        currentChatTitle.textContent = "@" + targetUser;
+        
+        if (isUserVerified(targetUser)) {
+          headerVerifiedIcon.style.display = "inline-flex";
+        } else {
+          headerVerifiedIcon.style.display = "none";
+        }
+
+        setElementAvatar(currentChatAvatar, targetUser, contactsAvatars[targetUser]);
+        currentChatAvatar.className = "chat-item-avatar";
+        
+        messageInput.placeholder = "Написать сообщение...";
+        messageInput.disabled = false;
+        sendMsgBtn.disabled = false;
+        attachBtn.style.display = "flex";
+        micRecordBtn.style.display = "flex";
+        callButtonsGroup.style.display = "flex";
+        chatMenuBtn.style.display = "flex";
+
+        unsubscribeUserPresence = onSnapshot(doc(db, "users", targetUser), (snap) => {
+          if (snap.exists()) {
+            const d = snap.data();
+            if (d.isVerified) {
+              verifiedUsersSet.add(sanitizeUsername(targetUser));
+              headerVerifiedIcon.style.display = "inline-flex";
+            } else if (!isAdministrator(targetUser)) {
+              verifiedUsersSet.delete(sanitizeUsername(targetUser));
+              headerVerifiedIcon.style.display = "none";
+            }
+
+            const lastM = d.lastOnlineMillis || (d.lastOnline?.toMillis ? d.lastOnline.toMillis() : (d.lastOnline?.seconds ? d.lastOnline.seconds * 1000 : 0));
+            const diff = Date.now() - lastM;
+            const isOnline = d.isOnline === true && d.sessionActive === true && (diff < 35000 && diff > -20000);
+            
+            if (isOnline) {
+              currentChatStatus.textContent = "в сети";
+              currentChatStatus.className = "chat-header-status online";
+            } else {
+              currentChatStatus.textContent = "не в сети";
+              currentChatStatus.className = "chat-header-status";
+            }
+          } else {
+            currentChatStatus.textContent = "не в сети";
+            currentChatStatus.className = "chat-header-status";
+          }
+        });
+
+        listenDirectChat(targetUser);
+        listenTyping(targetUser);
+      }
+      messageInput.focus();
+    }
+
+    function listenSystemChat() {
+      if (unsubscribeMessages) unsubscribeMessages();
+      if (unsubscribeTyping) unsubscribeTyping();
+      renderedMessageIds.clear();
+      messagesContainer.innerHTML = "";
+
+      const q = query(collection(db, `messages_system_${currentUsername}`), orderBy("localCreated", "asc"));
+
+      unsubscribeMessages = onSnapshot(q, (snapshot) => {
+        snapshot.docChanges().forEach(change => {
+          if (change.type === "added") {
+            const docId = change.doc.id;
+            if (!renderedMessageIds.has(docId)) {
+              renderedMessageIds.add(docId);
+              renderMessageItem(change.doc.data(), false, true, docId);
+            }
+          }
+        });
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+      }, () => {});
+    }
+
+    function getChatId(u1, u2) {
+      return [u1, u2].sort().join("__");
+    }
+
+    // Локально скрытые сообщения (удаленные только у текущего пользователя)
+    function getDeletedLocalMessages() {
+      try {
+        return new Set(JSON.parse(localStorage.getItem(`pg_del_${currentUsername}`) || "[]"));
+      } catch (e) {
+        return new Set();
+      }
+    }
+
+    function addDeletedLocalMessage(msgId) {
+      if (!msgId) return;
+      const set = getDeletedLocalMessages();
+      set.add(msgId);
+      localStorage.setItem(`pg_del_${currentUsername}`, JSON.stringify(Array.from(set)));
+    }
+
+    function getChatClearTime(chatId) {
+      return parseInt(localStorage.getItem(`pg_clear_${currentUsername}_${chatId}`) || "0", 10);
+    }
+
+    function listenDirectChat(otherUser) {
+      if (unsubscribeMessages) unsubscribeMessages();
+      renderedMessageIds.clear();
+      messagesContainer.innerHTML = "";
+
+      const chatId = getChatId(currentUsername, otherUser);
+      const q = query(collection(db, `dm_${chatId}`), orderBy("localCreated", "asc"));
+
+      const clearTime = getChatClearTime(chatId);
+      const deletedLocal = getDeletedLocalMessages();
+
+      let isInitialLoad = true;
+      unsubscribeMessages = onSnapshot(q, (snapshot) => {
+        if (snapshot.empty) {
+          messagesContainer.innerHTML = `<div class="chat-empty-hint">История пуста. Начните общение с @${escapeHtml(otherUser)}!</div>`;
+          renderedMessageIds.clear();
+        } else {
+          const emptyHint = messagesContainer.querySelector(".chat-empty-hint");
+          if (emptyHint) emptyHint.remove();
+        }
+
+        let hasNewIncoming = false;
+
+        snapshot.docChanges().forEach(change => {
+          const docId = change.doc.id;
+          const msgData = change.doc.data();
+
+          if (change.type === "added") {
+            // Пропуск очищенных и скрытых локально сообщений
+            if (msgData.localCreated && msgData.localCreated <= clearTime) return;
+            if (deletedLocal.has(docId)) return;
+
+            // Связывание оптимистично отправленного сообщения с полученным ID документа
+            const optElem = document.querySelector(`[data-temp-id="${msgData.localCreated}"]`);
+            if (optElem) {
+              optElem.id = `msg-${docId}`;
+              optElem.dataset.docId = docId;
+              renderedMessageIds.add(docId);
+              return;
+            }
+
+            if (!renderedMessageIds.has(docId)) {
+              renderedMessageIds.add(docId);
+              renderMessageItem(msgData, msgData.sender === currentUsername, false, docId);
+
+              if (!isInitialLoad && msgData.sender !== currentUsername) {
+                hasNewIncoming = true;
+                if (document.hidden || activeChatUser !== msgData.sender) {
+                  let previewBody = msgData.text || '';
+                  if (msgData.type === 'audio') previewBody = '🎤 Голосовое сообщение';
+                  else if (msgData.file) previewBody = msgData.file.isImage ? '📷 Фотография' : `📎 Файл: ${msgData.file.name}`;
+
+                  sendSystemNotification(`@${msgData.sender}`, {
+                    body: previewBody,
+                    tag: `msg_${msgData.sender}`
+                  }, () => {
+                    openChat(msgData.sender);
+                  });
+                }
+              }
+            }
+          } else if (change.type === "removed") {
+            // Сообщение удалено для обоих участников — моментально убираем из окна
+            renderedMessageIds.delete(docId);
+            const elem = document.getElementById(`msg-${docId}`);
+            if (elem) {
+              elem.style.transition = "opacity 0.2s, transform 0.2s";
+              elem.style.opacity = "0";
+              elem.style.transform = "scale(0.85)";
+              setTimeout(() => {
+                elem.remove();
+                if (messagesContainer.querySelectorAll(".message").length === 0) {
+                  messagesContainer.innerHTML = `<div class="chat-empty-hint">История пуста. Начните общение с @${escapeHtml(otherUser)}!</div>`;
+                }
+              }, 200);
+            }
+          }
+        });
+
+        if (hasNewIncoming) {
+          playChime();
+        }
+
+        const isNearBottom = messagesContainer.scrollHeight - messagesContainer.scrollTop - messagesContainer.clientHeight < 160;
+        if (isInitialLoad || isNearBottom) {
+          messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        isInitialLoad = false;
+      }, () => {});
+    }
+
+    function renderMessageItem(data, isMe, isSystem, docId = null, tempId = null) {
+      const msgDiv = document.createElement("div");
+      msgDiv.className = `message ${isSystem ? 'system-alert' : (isMe ? 'outgoing' : 'incoming')}`;
+      if (docId) msgDiv.id = `msg-${docId}`;
+      if (docId) msgDiv.dataset.docId = docId;
+      if (tempId) msgDiv.dataset.tempId = tempId;
+      msgDiv.dataset.sender = data.sender || '';
+
+      let time = "..:..";
+      if (data.localCreated) {
+        time = new Date(data.localCreated).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      } else if (data.timestamp) {
+        try {
+          const dateObj = typeof data.timestamp.toDate === "function" ? data.timestamp.toDate() : new Date(data.timestamp);
+          if (!isNaN(dateObj)) time = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        } catch (e) {}
+      }
+
+      let contentHtml = "";
+
+      if (data.type === "audio" && data.audioData) {
+        const storedSec = data.duration || 0;
+        contentHtml += `
+          <div class="msg-voice-note">
+            <button class="voice-play-btn" data-audio="${data.audioData}">
+              <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+            </button>
+            <div class="voice-waveform-wrap">
+              <input type="range" class="voice-progress-slider" min="0" max="100" value="0">
+              <span class="voice-time-label">${storedSec ? storedSec + ' сек' : 'Голосовое'}</span>
+            </div>
+          </div>
+        `;
+      } else if (data.file) {
+        if (data.file.isImage) {
+          contentHtml += `<img src="${data.file.dataUrl}" class="msg-media-image" alt="Фото" onclick="window.openImageViewer('${data.file.dataUrl}')">`;
+        } else {
+          contentHtml += `
+            <a href="${data.file.dataUrl}" download="${escapeHtml(data.file.name)}" class="msg-file-attachment">
+              <div class="msg-file-icon">
+                <svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+              </div>
+              <div class="msg-file-details">
+                <div class="msg-file-name">${escapeHtml(data.file.name)}</div>
+                <div class="msg-file-size">${escapeHtml(data.file.sizeFormatted || '')}</div>
+              </div>
+            </a>
+          `;
+        }
+      }
+
+      let rawText = data.text || "";
+      if (rawText.includes("CODE_BLOCK:")) {
+        const parts = rawText.split("CODE_BLOCK:");
+        contentHtml += `<div class="message-text">${escapeHtml(parts[0])}<span class="code-badge">${escapeHtml(parts[1].split("\n")[0].trim())}</span>${escapeHtml(parts[1].replace(parts[1].split("\n")[0], ""))}</div>`;
+      } else if (rawText) {
+        contentHtml += `<div class="message-text">${escapeHtml(rawText)}</div>`;
+      }
+
+      msgDiv.innerHTML = `${contentHtml}<span class="message-meta">${time}</span>`;
+      
+      // Меню удаления по клику на сообщение (доступно всем пользователям)
+      if (!isSystem) {
+        msgDiv.addEventListener("click", (e) => {
+          if (e.target.closest(".voice-play-btn") || e.target.closest(".msg-media-image") || e.target.closest("a")) return;
+          
+          currentActionMsg = {
+            docId: msgDiv.dataset.docId || docId,
+            tempId: msgDiv.dataset.tempId || tempId,
+            sender: data.sender,
+            textPreview: data.text || (data.file ? data.file.name : (data.type === 'audio' ? '🎤 Голосовое сообщение' : 'Сообщение')),
+            element: msgDiv
+          };
+
+          msgActionPreview.textContent = currentActionMsg.textPreview;
+          msgActionModal.style.display = "flex";
+        });
+      }
+
+      messagesContainer.appendChild(msgDiv);
+
+      const playBtn = msgDiv.querySelector(".voice-play-btn");
+      if (playBtn) {
+        const slider = msgDiv.querySelector(".voice-progress-slider");
+        const timeLabel = msgDiv.querySelector(".voice-time-label");
+        const audio = new Audio(playBtn.dataset.audio);
+        const fixedTotal = data.duration || 0;
+
+        playBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          if (audio.paused) {
+            if (activeVoiceAudio && activeVoiceAudio !== audio) {
+              activeVoiceAudio.pause();
+              if (activeVoicePlayBtn) {
+                activeVoicePlayBtn.innerHTML = `<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>`;
+              }
+            }
+            activeVoiceAudio = audio;
+            activeVoicePlayBtn = playBtn;
+
+            audio.play().then(() => {
+              playBtn.innerHTML = `<svg viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>`;
+            }).catch(() => {});
+          } else {
+            audio.pause();
+            playBtn.innerHTML = `<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>`;
+          }
+        });
+
+        audio.addEventListener("timeupdate", () => {
+          const totalSec = fixedTotal || audio.duration || 0;
+          if (totalSec > 0 && !isNaN(totalSec) && isFinite(totalSec)) {
+            slider.value = (audio.currentTime / totalSec) * 100;
+            const curSec = Math.floor(audio.currentTime);
+            timeLabel.textContent = `${curSec} сек / ${Math.floor(totalSec)} сек`;
+          }
+        });
+
+        slider.addEventListener("input", () => {
+          const totalSec = fixedTotal || audio.duration || 0;
+          if (totalSec > 0 && isFinite(totalSec)) {
+            audio.currentTime = (slider.value / 100) * totalSec;
+          }
+        });
+
+        audio.addEventListener("ended", () => {
+          playBtn.innerHTML = `<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>`;
+          slider.value = 0;
+          if (fixedTotal) timeLabel.textContent = `${fixedTotal} сек`;
+          if (activeVoiceAudio === audio) activeVoiceAudio = null;
+        });
+      }
+    }
+
+    // УДАЛЕНИЕ СООБЩЕНИЙ
+    msgActionCancelBtn.addEventListener("click", () => {
+      msgActionModal.style.display = "none";
+      currentActionMsg = null;
+    });
+
+    // 1. Удаление только у себя
+    msgDeleteForMeBtn.addEventListener("click", () => {
+      if (!currentActionMsg) return;
+      const targetId = currentActionMsg.docId;
+      if (targetId) {
+        addDeletedLocalMessage(targetId);
+      }
+      if (currentActionMsg.element) {
+        currentActionMsg.element.remove();
+      }
+      msgActionModal.style.display = "none";
+      currentActionMsg = null;
+      showToast("Сообщение удалено только у вас");
+    });
+
+    // 2. Удаление для обоих собеседников (для всех пользователей)
+    msgDeleteForAllBtn.addEventListener("click", async () => {
+      if (!currentActionMsg || !activeChatUser) return;
+      const targetId = currentActionMsg.docId;
+      const chatId = getChatId(currentUsername, activeChatUser);
+
+      msgDeleteForAllBtn.disabled = true;
+      msgDeleteForAllBtn.textContent = "Удаление...";
+
+      try {
+        if (targetId) {
+          await deleteDoc(doc(db, `dm_${chatId}`, targetId));
+        }
+        if (currentActionMsg.element) {
+          currentActionMsg.element.remove();
+        }
+        showToast("Сообщение удалено для обоих собеседников 💥");
+      } catch (err) {
+        showToast("Ошибка удаления: " + err.message);
+      } finally {
+        msgDeleteForAllBtn.disabled = false;
+        msgDeleteForAllBtn.textContent = "💥 Удалить для обоих собеседников";
+        msgActionModal.style.display = "none";
+        currentActionMsg = null;
+      }
+    });
+
+    // МЕНЮ ОЧИСТКИ ЧАТА
+    chatMenuBtn.addEventListener("click", () => {
+      if (!activeChatUser || activeChatUser === "phonogramm") return;
+      clearChatModal.style.display = "flex";
+    });
+
+    clearCancelBtn.addEventListener("click", () => {
+      clearChatModal.style.display = "none";
+    });
+
+    // 1. Очистка диалога только у меня
+    clearForMeBtn.addEventListener("click", () => {
+      if (!activeChatUser) return;
+      const chatId = getChatId(currentUsername, activeChatUser);
+      localStorage.setItem(`pg_clear_${currentUsername}_${chatId}`, String(Date.now()));
+      messagesContainer.innerHTML = `<div class="chat-empty-hint">История чата очищена.</div>`;
+      clearChatModal.style.display = "none";
+      showToast("История очищена только для вас");
+    });
+
+    // 2. Очистка диалога для обоих собеседников (полное удаление всех сообщений)
+    clearForBothBtn.addEventListener("click", async () => {
+      if (!activeChatUser) return;
+      const chatId = getChatId(currentUsername, activeChatUser);
+
+      clearForBothBtn.disabled = true;
+      clearForBothBtn.textContent = "Очистка...";
+
+      try {
+        const snap = await getDocs(collection(db, `dm_${chatId}`));
+        const deletePromises = [];
+        snap.forEach(d => {
+          deletePromises.push(deleteDoc(d.ref));
+        });
+        await Promise.all(deletePromises);
+
+        messagesContainer.innerHTML = `<div class="chat-empty-hint">История диалога полностью очищена для обоих собеседников.</div>`;
+        showToast("Чат полностью очищен для всех!");
+      } catch (err) {
+        showToast("Ошибка очистки: " + err.message);
+      } finally {
+        clearForBothBtn.disabled = false;
+        clearForBothBtn.textContent = "Очистить для обоих собеседников 💥";
+        clearChatModal.style.display = "none";
+      }
+    });
+
+    micRecordBtn.addEventListener("click", async () => {
+      if (isLocalFileContext || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        showToast("Микрофон заблокирован: откройте через сервер 127.0.0.1 или хостинг HTTPS");
+        return;
+      }
+
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        
+        const supportedMimeType = [
+          'audio/webm;codecs=opus',
+          'audio/webm',
+          'audio/mp4',
+          'audio/aac',
+          'audio/ogg'
+        ].find(type => typeof MediaRecorder.isTypeSupported === "function" && MediaRecorder.isTypeSupported(type)) || '';
+
+        mediaRecorder = supportedMimeType ? new MediaRecorder(stream, { mimeType: supportedMimeType }) : new MediaRecorder(stream);
+        audioChunks = [];
+        recordDurationSeconds = 0;
+
+        mediaRecorder.ondataavailable = (e) => {
+          if (e.data && e.data.size > 0) audioChunks.push(e.data);
+        };
+
+        mediaRecorder.start(250);
+        chatInputBar.style.display = "none";
+        voiceRecordBar.style.display = "flex";
+        recordTimerText.textContent = "00:00";
+
+        recordTimerInterval = setInterval(() => {
+          recordDurationSeconds++;
+          const mins = String(Math.floor(recordDurationSeconds / 60)).padStart(2, '0');
+          const secs = String(recordDurationSeconds % 60).padStart(2, '0');
+          recordTimerText.textContent = `${mins}:${secs}`;
+
+          if (recordDurationSeconds >= 60) {
+            showToast("Достигнут лимит голосового сообщения (1 мин)");
+            stopVoiceRecording(true);
+          }
+        }, 1000);
+      } catch (err) {
+        if (err.name === 'NotAllowedError' || (err.message && err.message.includes('Permission denied'))) {
+          showToast("Разрешите микрофон в настройках браузера (значок замочка в строке адреса)");
+        } else {
+          showToast("Не удалось получить доступ к микрофону");
+        }
+      }
+    });
+
+    cancelVoiceBtn.addEventListener("click", () => stopVoiceRecording(false));
+    sendVoiceBtn.addEventListener("click", () => stopVoiceRecording(true));
+
+    function stopVoiceRecording(shouldSend) {
+      if (!mediaRecorder) return;
+      clearInterval(recordTimerInterval);
+
+      const mime = mediaRecorder.mimeType || 'audio/webm';
+
+      mediaRecorder.onstop = () => {
+        if (shouldSend && audioChunks.length > 0) {
+          const audioBlob = new Blob(audioChunks, { type: mime });
+          
+          if (audioBlob.size > 700 * 1024) {
+            showToast("Запись слишком длинная для отправки");
+          } else {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+              sendAudioMessage(reader.result, recordDurationSeconds);
+            };
+            reader.readAsDataURL(audioBlob);
+          }
+        }
+        if (mediaRecorder.stream) {
+          mediaRecorder.stream.getTracks().forEach(t => t.stop());
+        }
+        mediaRecorder = null;
+      };
+
+      if (mediaRecorder.state !== "inactive") {
+        mediaRecorder.stop();
+      }
+
+      voiceRecordBar.style.display = "none";
+      chatInputBar.style.display = "flex";
+    }
+
+    function sendAudioMessage(audioDataUrl, durationSec) {
+      if (!activeChatUser || activeChatUser === "phonogramm") return;
+      const chatId = getChatId(currentUsername, activeChatUser);
+      const now = Date.now();
+
+      const payload = {
+        type: "audio",
+        audioData: audioDataUrl,
+        duration: durationSec,
+        sender: currentUsername,
+        recipient: activeChatUser,
+        timestamp: serverTimestamp(),
+        localCreated: now
+      };
+
+      // Мгновенный оптимистичный рендеринг голосового сообщения (0 мс)
+      renderMessageItem(payload, true, false, null, now);
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+      addDoc(collection(db, `dm_${chatId}`), payload).catch(() => {});
+
+      sendPushViaOneSignal(activeChatUser, `🎤 @${currentUsername}`, "Вам пришло новое голосовое сообщение");
+    }
+
+    async function processImageFile(file, maxWidth = 1000, maxHeight = 1000) {
+      let sourceBitmap = null;
+      try {
+        if ('createImageBitmap' in window) {
+          sourceBitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
+        }
+      } catch (e) {
+        sourceBitmap = null;
+      }
+
+      return new Promise((resolve, reject) => {
+        const renderToCanvas = (imgSource, srcW, srcH) => {
+          let width = srcW;
+          let height = srcH;
+
+          if (width > maxWidth || height > maxHeight) {
+            if (width / height > maxWidth / maxHeight) {
+              height = Math.round((height * maxWidth) / width);
+              width = maxWidth;
+            } else {
+              width = Math.round((width * maxHeight) / height);
+              height = maxHeight;
+            }
+          }
+
+          const canvas = document.createElement("canvas");
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext("2d");
+          ctx.drawImage(imgSource, 0, 0, width, height);
+
+          const compressedDataUrl = canvas.toDataURL("image/jpeg", 0.72);
+          resolve({
+            name: file.name,
+            isImage: true,
+            dataUrl: compressedDataUrl,
+            sizeFormatted: formatBytes(Math.round(compressedDataUrl.length * 0.75))
+          });
+        };
+
+        if (sourceBitmap) {
+          renderToCanvas(sourceBitmap, sourceBitmap.width, sourceBitmap.height);
+        } else {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            const img = new Image();
+            img.onload = () => renderToCanvas(img, img.width, img.height);
+            img.onerror = reject;
+            img.src = e.target.result;
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        }
+      });
+    }
+
+    function processGenericFile(file) {
+      return new Promise((resolve, reject) => {
+        if (file.size > 600 * 1024) {
+          reject(new Error("Лимит размера файла — 600 КБ."));
+          return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          resolve({
+            name: file.name,
+            isImage: false,
+            dataUrl: e.target.result,
+            sizeFormatted: formatBytes(file.size)
+          });
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+
+    attachBtn.addEventListener("click", () => hiddenFileInput.click());
+
+    hiddenFileInput.addEventListener("change", async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      try {
+        if (file.type.startsWith("image/")) {
+          currentAttachment = await processImageFile(file);
+          previewImageElem.src = currentAttachment.dataUrl;
+          previewImageElem.style.display = "block";
+        } else {
+          currentAttachment = await processGenericFile(file);
+          previewImageElem.style.display = "none";
+        }
+
+        previewFileName.textContent = `${currentAttachment.name} (${currentAttachment.sizeFormatted})`;
+        attachmentPreviewBar.style.display = "flex";
+        messageInput.focus();
+      } catch (err) {
+        showToast(err.message || "Ошибка загрузки файла");
+        clearAttachment();
+      } finally {
+        hiddenFileInput.value = "";
+      }
+    });
+
+    function clearAttachment() {
+      currentAttachment = null;
+      attachmentPreviewBar.style.display = "none";
+      previewImageElem.src = "";
+      previewFileName.textContent = "";
+    }
+
+    removeAttachmentBtn.addEventListener("click", clearAttachment);
+
+    // МГНОВЕННАЯ ОТПРАВКА СООБЩЕНИЯ (ОПТИМИСТИЧНЫЙ РЕНДЕРИНГ 0 МС БЕЗ ЗАВИСАНИЙ VPN)
+    function sendMessage() {
+      const text = messageInput.value.trim();
+      if ((!text && !currentAttachment) || !activeChatUser || activeChatUser === "phonogramm") return;
+
+      const chatId = getChatId(currentUsername, activeChatUser);
+      const now = Date.now();
+
+      const payload = {
+        text: text,
+        sender: currentUsername,
+        recipient: activeChatUser,
+        timestamp: serverTimestamp(),
+        localCreated: now
+      };
+
+      if (currentAttachment) payload.file = currentAttachment;
+
+      const emptyHint = messagesContainer.querySelector(".chat-empty-hint");
+      if (emptyHint) emptyHint.remove();
+
+      // Оптимистичный рендеринг: сообщение появляется в окне МГНОВЕННО
+      renderMessageItem(payload, true, false, null, now);
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+      const pushPreview = text || (currentAttachment?.isImage ? "📷 Фотография" : `📎 Файл: ${currentAttachment?.name}`);
+      const recipientToSend = activeChatUser;
+
+      messageInput.value = "";
+      clearAttachment();
+
+      addDoc(collection(db, `dm_${chatId}`), payload).catch((err) => {
+        console.warn("Background save delay:", err);
+      });
+
+      setDoc(doc(db, "users", currentUsername), { contacts: arrayUnion(activeChatUser) }, { merge: true }).catch(() => {});
+      setDoc(doc(db, "users", activeChatUser), { contacts: arrayUnion(currentUsername) }, { merge: true }).catch(() => {});
+
+      sendPushViaOneSignal(recipientToSend, `@${currentUsername} (Phonogramm)`, pushPreview);
+    }
+
+    sendMsgBtn.addEventListener("click", sendMessage);
+    messageInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") sendMessage();
+    });
+
+    messageInput.addEventListener("input", () => {
+      if (!activeChatUser || activeChatUser === "phonogramm") return;
+      const now = Date.now();
+      if (now - lastTypingSentTime > 2500) {
+        lastTypingSentTime = now;
+        const chatId = getChatId(currentUsername, activeChatUser);
+        setDoc(doc(db, "typing", `${chatId}_${currentUsername}`), { timestamp: now }, { merge: true }).catch(() => {});
+      }
+    });
+
+    function listenTyping(otherUser) {
+      if (unsubscribeTyping) unsubscribeTyping();
+      const chatId = getChatId(currentUsername, otherUser);
+
+      unsubscribeTyping = onSnapshot(doc(db, "typing", `${chatId}_${otherUser}`), (snap) => {
+        if (snap.exists()) {
+          const diff = Date.now() - (snap.data().timestamp || 0);
+          if (diff < 3500) {
+            currentChatStatus.textContent = "печатает...";
+            currentChatStatus.className = "chat-header-status typing";
+            clearTimeout(typingTimeout);
+            typingTimeout = setTimeout(() => {
+              if (currentChatStatus.classList.contains("typing")) {
+                currentChatStatus.className = "chat-header-status online";
+                currentChatStatus.textContent = "в сети";
+              }
+            }, 3000);
+          }
+        }
+      }, () => {});
+    }
+
+    profileBadgeBtn.addEventListener("click", () => {
+      avatarClickCount++;
+      clearTimeout(avatarClickTimer);
+      avatarClickTimer = setTimeout(() => {
+        if (avatarClickCount >= 3) {
+          if (isAdministrator(currentUsername)) {
+            openAdminPanelModal();
+          } else {
+            openSettingsModal();
+          }
+        } else if (avatarClickCount === 1) {
+          openSettingsModal();
+        }
+        avatarClickCount = 0;
+      }, 400);
+    });
+
+    function openSettingsModal() {
+      settingsUsernameDisplay.textContent = "@" + currentUsername;
+      setElementAvatar(settingsAvatarPreview, currentUsername, myCurrentAvatarUrl);
+
+      if (isAdministrator(currentUsername)) {
+        adminPanelEntryBtnWrap.style.display = "block";
+      } else {
+        adminPanelEntryBtnWrap.style.display = "none";
+      }
+
+      settingsModal.style.display = "flex";
+    }
+
+    headerSettingsBtn.addEventListener("click", openSettingsModal);
+    closeSettingsBtn.addEventListener("click", () => { settingsModal.style.display = "none"; });
+
+    settingsAvatarWrapper.addEventListener("click", () => {
+      settingsAvatarInput.click();
+    });
+
+    settingsAvatarInput.addEventListener("change", async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      try {
+        showToast("Загрузка и сохранение аватара...");
+        const processed = await processImageFile(file, 200, 200);
+        myCurrentAvatarUrl = processed.dataUrl;
+        
+        setElementAvatar(settingsAvatarPreview, currentUsername, myCurrentAvatarUrl);
+        setElementAvatar(myAvatar, currentUsername, myCurrentAvatarUrl);
+
+        await setDoc(doc(db, "users", currentUsername), {
+          avatarUrl: myCurrentAvatarUrl
+        }, { merge: true });
+
+        showToast("Аватар успешно обновлен!");
+      } catch (err) {
+        showToast("Ошибка сохранения аватара: " + err.message);
+      } finally {
+        settingsAvatarInput.value = "";
+      }
+    });
+
+    saveAccountPassBtn.addEventListener("click", async () => {
+      const newPass = settingsPasswordInput.value.trim();
+      if (!newPass) {
+        showToast("Введите пароль для сохранения");
+        return;
+      }
+
+      saveAccountPassBtn.disabled = true;
+      saveAccountPassBtn.textContent = "Сохранение...";
+
+      try {
+        await setDoc(doc(db, "users", currentUsername), {
+          password: newPass
+        }, { merge: true });
+
+        showToast("Пароль аккаунта сохранен! ✅");
+      } catch (err) {
+        showToast("Ошибка сохранения пароля: " + err.message);
+      } finally {
+        saveAccountPassBtn.disabled = false;
+        saveAccountPassBtn.textContent = "Сохранить пароль аккаунта";
+      }
+    });
+
+    openAdminBtn.addEventListener("click", () => {
+      settingsModal.style.display = "none";
+      openAdminPanelModal();
+    });
+
+    function startAdminLoginAlerts() {
+      if (unsubscribeAdminLoginAlerts) unsubscribeAdminLoginAlerts();
+      const q = query(collection(db, "users"));
+      unsubscribeAdminLoginAlerts = onSnapshot(q, (snapshot) => {
+        snapshot.docChanges().forEach((change) => {
+          if (change.type === "modified") {
+            const data = change.doc.data();
+            const u = change.doc.id;
+            if (data.pendingAuth && data.pendingAuth.code) {
+              const reqAge = Date.now() - (data.pendingAuth.reqAt || 0);
+              if (reqAge < 30000) {
+                playChime();
+                sendSystemNotification(`🔑 Запрос на вход: @${u}`, {
+                  body: `Код подтверждения: ${data.pendingAuth.code}. Нажмите для одобрения.`,
+                  tag: `login_req_${u}`
+                }, () => {
+                  openAdminPanelModal();
+                });
+                showToast(`Пользователь @${u} запросил вход (Код: ${data.pendingAuth.code})`);
+              }
+            }
+          }
+        });
+      }, () => {});
+    }
+
+    // ПОЛНОЦЕННАЯ АДМИН-ПАНЕЛЬ: ВЫДАЧА ГАЛОЧЕК ДРУГИМ, ОДОБРЕНИЕ ВХОДОВ И КИК
+    async function openAdminPanelModal() {
+      if (!isAdministrator(currentUsername)) {
+        showToast("Доступ запрещен.");
+        return;
+      }
+
+      adminModal.style.display = "flex";
+      const pendingList = document.getElementById("admin-pending-list");
+      pendingList.innerHTML = `<li style="text-align: center; color: var(--text-sub); padding: 8px;">Загрузка...</li>`;
+      adminUsersList.innerHTML = `<li style="text-align: center; color: var(--text-sub); padding: 10px;">Загрузка пользователей...</li>`;
+
+      try {
+        const querySnapshot = await getDocs(collection(db, "users"));
+        pendingList.innerHTML = "";
+        adminUsersList.innerHTML = "";
+
+        let pendingCount = 0;
+        let totalUsersCount = 0;
+
+        querySnapshot.forEach((docSnap) => {
+          const uData = docSnap.data();
+          const targetU = docSnap.id;
+
+          // Исключаем системный чат и самого супер-админа
+          if (targetU === "phonogramm" || targetU === currentUsername) return;
+
+          totalUsersCount++;
+
+          // Запросы на вход с кодом
+          if (uData.pendingAuth && uData.pendingAuth.code) {
+            pendingCount++;
+            const pLi = document.createElement("li");
+            pLi.className = "admin-user-item";
+            pLi.innerHTML = `
+              <div style="min-width: 0; flex: 1;">
+                <b>@${escapeHtml(targetU)}</b>
+                <div style="margin-top: 2px;">Код: <span class="admin-code-tag">${escapeHtml(String(uData.pendingAuth.code))}</span></div>
+              </div>
+              <button class="admin-approve-btn" data-user="${escapeHtml(targetU)}" data-dev="${escapeHtml(uData.pendingAuth.reqDevice || '')}">Впустить ✅</button>
+            `;
+            pendingList.appendChild(pLi);
+          }
+
+          // Расчет статуса пользователя
+          const now = Date.now();
+          const lastMillis = uData.lastOnlineMillis || (uData.lastOnline?.toMillis ? uData.lastOnline.toMillis() : (uData.lastOnline?.seconds ? uData.lastOnline.seconds * 1000 : 0));
+          const diff = now - lastMillis;
+          const isReallyOnline = uData.isOnline === true && uData.sessionActive === true && (diff < 35000 && diff > -20000) && uData.deviceId && !String(uData.deviceId).startsWith("kicked_") && uData.deviceId !== "logged_out";
+          const isKicked = uData.isKicked === true || String(uData.deviceId || '').startsWith("kicked_");
+          const hasVerifiedBadge = uData.isVerified === true;
+
+          let statusBadge = '';
+          if (isKicked) {
+            statusBadge = '<span style="font-size: 11px; color: var(--danger); font-weight: 600;">🚫 Кикнут</span>';
+          } else if (isReallyOnline) {
+            statusBadge = '<span style="font-size: 11px; color: var(--online); font-weight: 600;">🟢 В сети</span>';
+          } else {
+            const timeAgo = lastMillis ? formatTimeAgo(lastMillis) : 'оффлайн';
+            statusBadge = `<span style="font-size: 11px; color: var(--text-sub);">⚪ ${timeAgo}</span>`;
+          }
+
+          const li = document.createElement("li");
+          li.className = "admin-user-item";
+          li.innerHTML = `
+            <div style="min-width: 0; flex: 1;">
+              <div style="display: flex; align-items: center; gap: 5px;">
+                <b>@${escapeHtml(targetU)}</b>
+                ${hasVerifiedBadge ? '<span class="verified-icon"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></span>' : ''}
+              </div>
+              <div style="margin-top: 2px;">${statusBadge}</div>
+            </div>
+            <div class="admin-actions-cell">
+              <button class="admin-verify-toggle-btn ${hasVerifiedBadge ? 'verified' : ''}" data-user="${escapeHtml(targetU)}" data-verified="${hasVerifiedBadge}">
+                ${hasVerifiedBadge ? 'Снять ✔' : 'Галочка ✔'}
+              </button>
+              <button class="admin-user-kick-btn ${isKicked ? 'kicked' : ''}" data-user="${escapeHtml(targetU)}">
+                ${isKicked ? 'Выбит' : 'Кикнуть'}
+              </button>
+            </div>
+          `;
+          adminUsersList.appendChild(li);
+        });
+
+        if (pendingCount === 0) {
+          pendingList.innerHTML = `<li style="text-align: center; color: var(--text-sub); padding: 8px;">Нет активных запросов на вход</li>`;
+        }
+
+        if (totalUsersCount === 0) {
+          adminUsersList.innerHTML = `<li style="text-align: center; color: var(--text-sub); padding: 10px;">В базе ещё нет зарегистрированных пользователей</li>`;
+        }
+
+        pendingList.querySelectorAll(".admin-approve-btn").forEach(btn => {
+          btn.addEventListener("click", async (ev) => {
+            const userToApprove = ev.target.dataset.user;
+            const targetDev = ev.target.dataset.dev;
+            ev.target.disabled = true;
+            ev.target.textContent = "Вход...";
+
+            try {
+              await setDoc(doc(db, "users", userToApprove), {
+                deviceId: targetDev,
+                sessionActive: true,
+                isOnline: true,
+                isKicked: false,
+                pendingAuth: null,
+                lastOnline: serverTimestamp(),
+                lastOnlineMillis: Date.now()
+              }, { merge: true });
+
+              showToast(`Вход для @${userToApprove} успешно одобрен!`);
+              openAdminPanelModal();
+            } catch (err) {
+              showToast("Ошибка: " + err.message);
+              ev.target.disabled = false;
+            }
+          });
+        });
+
+        // ПЕРЕКЛЮЧЕНИЕ ГАЛОЧКИ ВЕРИФИКАЦИИ ДЛЯ ЛЮБОГО ПОЛЬЗОВАТЕЛЯ
+        adminUsersList.querySelectorAll(".admin-verify-toggle-btn").forEach(btn => {
+          btn.addEventListener("click", async (ev) => {
+            const userTarget = ev.target.dataset.user;
+            const isCurrentlyVerified = ev.target.dataset.verified === "true";
+            const newStatus = !isCurrentlyVerified;
+
+            ev.target.disabled = true;
+            ev.target.textContent = "...";
+
+            try {
+              await setDoc(doc(db, "users", userTarget), {
+                isVerified: newStatus
+              }, { merge: true });
+
+              if (newStatus) {
+                verifiedUsersSet.add(sanitizeUsername(userTarget));
+                showToast(`Галочка верификации выдана @${userTarget}! ✔`);
+              } else {
+                verifiedUsersSet.delete(sanitizeUsername(userTarget));
+                showToast(`Галочка снята у @${userTarget}`);
+              }
+
+              updateAllVerifiedBadges();
+              setTimeout(openAdminPanelModal, 250);
+            } catch (err) {
+              showToast("Ошибка смены галочки: " + err.message);
+              ev.target.disabled = false;
+            }
+          });
+        });
+
+        adminUsersList.querySelectorAll(".admin-user-kick-btn").forEach(btn => {
+          btn.addEventListener("click", async (ev) => {
+            const userToKick = ev.target.dataset.user;
+            ev.target.disabled = true;
+            ev.target.textContent = "Кик...";
+
+            try {
+              await setDoc(doc(db, "users", userToKick), {
+                deviceId: "kicked_by_admin_" + Date.now(),
+                sessionActive: false,
+                isOnline: false,
+                isKicked: true,
+                pendingAuth: null
+              }, { merge: true });
+
+              showToast(`Пользователь @${userToKick} выбит из сессии!`);
+              setTimeout(openAdminPanelModal, 400);
+            } catch (kErr) {
+              showToast("Ошибка кика: " + kErr.message);
+              ev.target.disabled = false;
+              ev.target.textContent = "Кикнуть";
+            }
+          });
+        });
+
+      } catch (err) {
+        adminUsersList.innerHTML = `<li style="color: var(--danger); text-align: center; padding: 10px;">Ошибка загрузки базы: ${escapeHtml(err.message)}</li>`;
+      }
+    }
+
+    closeAdminBtn.addEventListener("click", () => {
+      adminModal.style.display = "none";
+    });
+
+    function openNewChatModal() {
+      newChatModal.style.display = "flex";
+      newChatInput.value = "";
+      setTimeout(() => newChatInput.focus(), 100);
+    }
+
+    fabOpenNew.addEventListener("click", openNewChatModal);
+    headerNewChatBtn.addEventListener("click", openNewChatModal);
+
+    cancelNewChatBtn.addEventListener("click", () => {
+      newChatModal.style.display = "none";
+    });
+
+    async function handleStartNewChat() {
+      const raw = newChatInput.value.trim();
+      const target = sanitizeUsername(raw);
+
+      if (!target) {
+        showToast("Введите корректный никнейм");
+        return;
+      }
+
+      if (target === currentUsername) {
+        showToast("Нельзя создать диалог с самим собой");
+        return;
+      }
+
+      newChatModal.style.display = "none";
+      knownContacts.add(target);
+
+      try {
+        await setDoc(doc(db, "users", currentUsername), {
+          contacts: arrayUnion(target)
+        }, { merge: true });
+      } catch (e) {}
+
+      loadContactsProfilesAndRender();
+      openChat(target);
+    }
+
+    confirmNewChatBtn.addEventListener("click", handleStartNewChat);
+    newChatInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") handleStartNewChat();
+    });
+
+    startAudioCallBtn.addEventListener("click", () => {
+      unlockAudioContext();
+      remoteAudioElem.play().catch(() => {});
+      initiateCall('audio');
+    });
+
+    startVideoCallBtn.addEventListener("click", () => {
+      unlockAudioContext();
+      remoteVideoElem.play().catch(() => {});
+      initiateCall('video');
+    });
+
+    async function acquireUserMediaSafely(type) {
+      if (isLocalFileContext || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error("Android заблокировал доступ к медиа для content://. Запустите через сервер 127.0.0.1 или хостинг HTTPS");
+      }
+
+      const audioConstraints = { echoCancellation: true, noiseSuppression: true, autoGainControl: true };
+
+      if (type === 'video') {
+        try {
+          return await navigator.mediaDevices.getUserMedia({
+            audio: audioConstraints,
+            video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } }
+          });
+        } catch (videoErr) {
+          showToast("Камера недоступна. Переключаем на аудио...");
+          try {
+            return await navigator.mediaDevices.getUserMedia({ audio: audioConstraints });
+          } catch (audioErr) {
+            throw new Error("Разрешите микрофон в настройках браузера (значок замочка)");
+          }
+        }
+      } else {
+        try {
+          return await navigator.mediaDevices.getUserMedia({ audio: audioConstraints });
+        } catch (audioErr) {
+          throw new Error("Разрешите микрофон в настройках браузера (значок замочка)");
+        }
+      }
+    }
+
+    async function drainIceCandidatesQueue() {
+      if (peerConnection && peerConnection.remoteDescription && candidateQueue.length > 0) {
+        for (const candidateData of candidateQueue) {
+          try {
+            await peerConnection.addIceCandidate(new RTCIceCandidate(candidateData));
+          } catch (e) {}
+        }
+        candidateQueue = [];
+      }
+    }
+
+    async function initiateCall(type) {
+      if (!activeChatUser || activeChatUser === "phonogramm") return;
+      if (currentCallId) {
+        showToast("Вы уже находитесь в звонке");
+        return;
+      }
+
+      currentCallType = type;
+      callPartnerDisplay.textContent = "@" + activeChatUser;
+      callTimerDisplay.textContent = "Вызов...";
+      callScreenOverlay.style.display = "flex";
+      candidateQueue = [];
+
+      setupCallUI(type, activeChatUser);
+
+      try {
+        localStream = await acquireUserMediaSafely(type);
+
+        const hasVideo = localStream.getVideoTracks().length > 0;
+        if (hasVideo) {
+          localVideoElem.srcObject = localStream;
+          localVideoElem.style.display = "block";
+        } else {
+          localVideoElem.style.display = "none";
+          callAudioAvatar.style.display = "flex";
+        }
+
+        peerConnection = new RTCPeerConnection(rtcConfig);
+        localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+
+        peerConnection.ontrack = (event) => {
+          const stream = event.streams[0];
+          if (type === 'video') {
+            remoteVideoElem.srcObject = stream;
+            remoteVideoElem.style.display = "block";
+            remoteVideoElem.muted = false;
+            callAudioAvatar.style.display = "none";
+            remoteAudioElem.srcObject = null;
+          } else {
+            remoteVideoElem.srcObject = null;
+            remoteVideoElem.style.display = "none";
+            remoteAudioElem.srcObject = stream;
+            remoteAudioElem.play().catch(() => {});
+          }
+        };
+
+        const callDocRef = doc(collection(db, "calls"));
+        currentCallId = callDocRef.id;
+
+        const callerCandidatesCol = collection(db, `calls/${currentCallId}/callerCandidates`);
+        peerConnection.onicecandidate = (event) => {
+          if (event.candidate) {
+            addDoc(callerCandidatesCol, event.candidate.toJSON()).catch(() => {});
+          }
+        };
+
+        const offer = await peerConnection.createOffer();
+        await peerConnection.setLocalDescription(offer);
+
+        await setDoc(callDocRef, {
+          caller: currentUsername,
+          receiver: activeChatUser,
+          type: type,
+          status: 'ringing',
+          offer: { type: offer.type, sdp: offer.sdp },
+          createdAt: serverTimestamp(),
+          createdMillis: Date.now()
+        });
+
+        startRingtoneSound();
+
+        sendPushViaOneSignal(activeChatUser, `📞 Входящий ${type === 'video' ? 'видеозвонок' : 'звонок'}!`, `@${currentUsername} вызывает вас в Phonogramm...`);
+
+        unsubscribeCallDoc = onSnapshot(callDocRef, async (snap) => {
+          const data = snap.data();
+          if (!data) return;
+
+          if (data.status === 'rejected') {
+            showToast("Вызов отклонен");
+            terminateCall();
+          } else if (data.status === 'ended') {
+            terminateCall();
+          } else if (data.status === 'connected' && !peerConnection.currentRemoteDescription && data.answer) {
+            stopRingtoneSound();
+            await peerConnection.setRemoteDescription(new RTCSessionDescription(data.answer));
+            await drainIceCandidatesQueue();
+            startCallTimer();
+
+            unsubscribeCalleeCandidates = onSnapshot(collection(db, `calls/${currentCallId}/calleeCandidates`), (snapshot) => {
+              snapshot.docChanges().forEach(change => {
+                if (change.type === "added") {
+                  const cData = change.doc.data();
+                  if (peerConnection && peerConnection.remoteDescription) {
+                    peerConnection.addIceCandidate(new RTCIceCandidate(cData)).catch(() => {});
+                  } else {
+                    candidateQueue.push(cData);
+                  }
+                }
+              });
+            });
+          }
+        });
+      } catch (err) {
+        showToast("Ошибка звонка: " + err.message);
+        terminateCall();
+      }
+    }
+
+    function startIncomingCallsListener() {
+      if (unsubscribeCallListener) unsubscribeCallListener();
+
+      const callsQuery = query(collection(db, "calls"), where("receiver", "==", currentUsername));
+      unsubscribeCallListener = onSnapshot(callsQuery, (snapshot) => {
+        snapshot.docChanges().forEach(change => {
+          if (change.type === "added" || change.type === "modified") {
+            const call = change.doc.data();
+            const callId = change.doc.id;
+
+            const callAge = Date.now() - (call.createdMillis || 0);
+            if (callAge > 60000 && !call.createdMillis) return;
+
+            if (call.status === 'ringing') {
+              if (currentCallId && currentCallId !== callId) {
+                setDoc(doc(db, "calls", callId), { status: 'rejected' }, { merge: true }).catch(() => {});
+                return;
+              }
+
+              window.activeIncomingCallId = callId;
+              window.activeIncomingCallData = call;
+
+              setElementAvatar(incCallerAvatar, call.caller, contactsAvatars[call.caller]);
+              incCallerName.textContent = "@" + call.caller;
+              incCallTypeLabel.textContent = call.type === 'video' ? "Входящий видеозвонок..." : "Входящий аудиозвонок...";
+              incomingCallModal.style.display = "flex";
+              startRingtoneSound();
+
+              if (activeCallNotification) activeCallNotification.close();
+              activeCallNotification = sendSystemNotification(`📞 Входящий ${call.type === 'video' ? 'видеозвонок' : 'аудиозвонок'}!`, {
+                body: `@${call.caller} вызывает вас в Phonogramm...`,
+                tag: `call_${callId}`,
+                requireInteraction: true
+              }, () => {
+                window.focus();
+              });
+            } else if (window.activeIncomingCallId === callId && (call.status === 'rejected' || call.status === 'ended')) {
+              incomingCallModal.style.display = "none";
+              stopRingtoneSound();
+              if (activeCallNotification) {
+                activeCallNotification.close();
+                activeCallNotification = null;
+              }
+            }
+          }
+        });
+      });
+    }
+
+    incCallDeclineBtn.addEventListener("click", async () => {
+      stopRingtoneSound();
+      if (activeCallNotification) {
+        activeCallNotification.close();
+        activeCallNotification = null;
+      }
+      incomingCallModal.style.display = "none";
+      if (window.activeIncomingCallId) {
+        await setDoc(doc(db, "calls", window.activeIncomingCallId), { status: 'rejected' }, { merge: true }).catch(() => {});
+      }
+    });
+
+    incCallAcceptBtn.addEventListener("click", async () => {
+      unlockAudioContext();
+      remoteAudioElem.play().catch(() => {});
+      remoteVideoElem.play().catch(() => {});
+
+      stopRingtoneSound();
+      if (activeCallNotification) {
+        activeCallNotification.close();
+        activeCallNotification = null;
+      }
+      incomingCallModal.style.display = "none";
+      const callId = window.activeIncomingCallId;
+      const callData = window.activeIncomingCallData;
+      if (!callId || !callData) return;
+
+      currentCallId = callId;
+      currentCallType = callData.type;
+      callPartnerDisplay.textContent = "@" + callData.caller;
+      callTimerDisplay.textContent = "Соединение...";
+      callScreenOverlay.style.display = "flex";
+      candidateQueue = [];
+
+      setupCallUI(callData.type, callData.caller);
+
+      try {
+        localStream = await acquireUserMediaSafely(callData.type);
+
+        const hasVideo = localStream.getVideoTracks().length > 0;
+        if (hasVideo) {
+          localVideoElem.srcObject = localStream;
+          localVideoElem.style.display = "block";
+        } else {
+          localVideoElem.style.display = "none";
+          callAudioAvatar.style.display = "flex";
+        }
+
+        peerConnection = new RTCPeerConnection(rtcConfig);
+        localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+
+        peerConnection.ontrack = (event) => {
+          const stream = event.streams[0];
+          if (callData.type === 'video') {
+            remoteVideoElem.srcObject = stream;
+            remoteVideoElem.style.display = "block";
+            remoteVideoElem.muted = false;
+            callAudioAvatar.style.display = "none";
+            remoteAudioElem.srcObject = null;
+          } else {
+            remoteVideoElem.srcObject = null;
+            remoteVideoElem.style.display = "none";
+            remoteAudioElem.srcObject = stream;
+            remoteAudioElem.play().catch(() => {});
+          }
+        };
+
+        const calleeCandidatesCol = collection(db, `calls/${callId}/calleeCandidates`);
+        peerConnection.onicecandidate = (event) => {
+          if (event.candidate) {
+            addDoc(calleeCandidatesCol, event.candidate.toJSON()).catch(() => {});
+          }
+        };
+
+        await peerConnection.setRemoteDescription(new RTCSessionDescription(callData.offer));
+        await drainIceCandidatesQueue();
+
+        const answer = await peerConnection.createAnswer();
+        await peerConnection.setLocalDescription(answer);
+
+        await setDoc(doc(db, "calls", callId), {
+          status: 'connected',
+          answer: { type: answer.type, sdp: answer.sdp }
+        }, { merge: true });
+
+        startCallTimer();
+
+        unsubscribeCallerCandidates = onSnapshot(collection(db, `calls/${callId}/callerCandidates`), (snapshot) => {
+          snapshot.docChanges().forEach(change => {
+            if (change.type === "added") {
+              const cData = change.doc.data();
+              if (peerConnection && peerConnection.remoteDescription) {
+                peerConnection.addIceCandidate(new RTCIceCandidate(cData)).catch(() => {});
+              } else {
+                candidateQueue.push(cData);
+              }
+            }
+          });
+        });
+
+        unsubscribeCallDoc = onSnapshot(doc(db, "calls", callId), (snap) => {
+          const d = snap.data();
+          if (d && (d.status === 'ended' || d.status === 'rejected')) {
+            terminateCall();
+          }
+        });
+      } catch (err) {
+        showToast("Ошибка ответа: " + err.message);
+        terminateCall();
+      }
+    });
+
+    function setupCallUI(type, partner) {
+      if (type === 'video') {
+        callAudioAvatar.style.display = "none";
+        callToggleVideoBtn.style.display = "flex";
+        callPipBtn.style.display = "flex";
+      } else {
+        callAudioAvatar.style.display = "flex";
+        setElementAvatar(callAudioAvatar, partner, contactsAvatars[partner]);
+        remoteVideoElem.style.display = "none";
+        localVideoElem.style.display = "none";
+        callToggleVideoBtn.style.display = "none";
+        callPipBtn.style.display = "none";
+      }
+      isMicMuted = false;
+      isVideoOff = false;
+      callMuteMicBtn.classList.remove("active-off");
+      callToggleVideoBtn.classList.remove("active-off");
+
+      if ('mediaSession' in navigator) {
+        try {
+          navigator.mediaSession.metadata = new MediaMetadata({
+            title: `Звонок: @${partner}`,
+            artist: 'Phonogramm',
+            album: type === 'video' ? 'Видеозвонок' : 'Голосовой звонок'
+          });
+          navigator.mediaSession.playbackState = 'playing';
+          navigator.mediaSession.setActionHandler('hangup', () => {
+            callHangupBtn.click();
+          });
+        } catch (e) {}
+      }
+    }
+
+    function startCallTimer() {
+      clearInterval(callTimerInterval);
+      callSeconds = 0;
+      callTimerInterval = setInterval(() => {
+        callSeconds++;
+        const mins = String(Math.floor(callSeconds / 60)).padStart(2, '0');
+        const secs = String(callSeconds % 60).padStart(2, '0');
+        callTimerDisplay.textContent = `${mins}:${secs}`;
+      }, 1000);
+    }
+
+    callHangupBtn.addEventListener("click", () => {
+      if (currentCallId) {
+        setDoc(doc(db, "calls", currentCallId), { status: 'ended' }, { merge: true }).catch(() => {});
+      }
+      terminateCall();
+    });
+
+    function terminateCall() {
+      stopRingtoneSound();
+      clearInterval(callTimerInterval);
+      
+      if (unsubscribeCallDoc) { unsubscribeCallDoc(); unsubscribeCallDoc = null; }
+      if (unsubscribeCallerCandidates) { unsubscribeCallerCandidates(); unsubscribeCallerCandidates = null; }
+      if (unsubscribeCalleeCandidates) { unsubscribeCalleeCandidates(); unsubscribeCalleeCandidates = null; }
+
+      if (peerConnection) {
+        peerConnection.close();
+        peerConnection = null;
+      }
+      if (localStream) {
+        localStream.getTracks().forEach(t => t.stop());
+        localStream = null;
+      }
+
+      remoteVideoElem.srcObject = null;
+      localVideoElem.srcObject = null;
+      remoteAudioElem.srcObject = null;
+      callScreenOverlay.style.display = "none";
+      currentCallId = null;
+      candidateQueue = [];
+
+      if (activeCallNotification) {
+        activeCallNotification.close();
+        activeCallNotification = null;
+      }
+
+      if ('mediaSession' in navigator) {
+        try {
+          navigator.mediaSession.playbackState = 'none';
+        } catch (e) {}
+      }
+
+      if (document.pictureInPictureElement) {
+        document.exitPictureInPicture().catch(() => {});
+      }
+    }
+
+    callMuteMicBtn.addEventListener("click", () => {
+      if (!localStream) return;
+      isMicMuted = !isMicMuted;
+      localStream.getAudioTracks().forEach(track => { track.enabled = !isMicMuted; });
+      callMuteMicBtn.classList.toggle("active-off", isMicMuted);
+    });
+
+    callToggleVideoBtn.addEventListener("click", () => {
+      if (!localStream) return;
+      isVideoOff = !isVideoOff;
+      localStream.getVideoTracks().forEach(track => { track.enabled = !isVideoOff; });
+      callToggleVideoBtn.classList.toggle("active-off", isVideoOff);
+    });
+
+    callPipBtn.addEventListener("click", async () => {
+      try {
+        if (document.pictureInPictureElement) {
+          await document.exitPictureInPicture();
+        } else if (remoteVideoElem && remoteVideoElem.srcObject) {
+          await remoteVideoElem.requestPictureInPicture();
+        }
+      } catch (err) {
+        showToast("Режим картинка-в-картинке недоступен в этом браузере");
+      }
+    });
+
+    document.addEventListener("visibilitychange", async () => {
+      if (document.hidden) {
+        if (currentCallId && currentCallType === 'video' && remoteVideoElem && remoteVideoElem.srcObject && !document.pictureInPictureElement) {
+          try {
+            if (document.pictureInPictureEnabled && remoteVideoElem.readyState >= 2) {
+              await remoteVideoElem.requestPictureInPicture();
+            }
+          } catch (e) {}
+        }
+      }
+    });
+
+    searchInput.addEventListener("input", (e) => {
+      const filter = e.target.value.toLowerCase();
+      document.querySelectorAll(".chat-item").forEach(item => {
+        const name = item.querySelector(".chat-item-name")?.textContent.toLowerCase() || "";
+        item.style.display = name.includes(filter) ? "flex" : "none";
+      });
+    });
+  </script>
+</body>
+</html>
