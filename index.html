@@ -47,7 +47,7 @@
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
     }
 
-    body > :not(#app-container):not(.modal-overlay):not(#toast-container):not(#incoming-call-modal):not(#call-screen-overlay):not(#image-viewer-modal):not(#gift-detail-modal):not(#user-profile-modal):not(audio):not(script) {
+    body > :not(#app-container):not(.modal-overlay):not(#toast-container):not(#incoming-call-modal):not(#call-screen-overlay):not(#image-viewer-modal):not(#gift-detail-modal):not(#user-profile-modal):not(#env-warning-banner):not(audio):not(script) {
       display: none !important;
       visibility: hidden !important;
       opacity: 0 !important;
@@ -583,9 +583,14 @@
 
     .profile-status-label {
       font-size: 13px;
-      color: var(--online);
+      color: var(--offline);
       margin-bottom: 16px;
       text-align: center;
+      transition: color 0.2s;
+    }
+
+    .profile-status-label.online {
+      color: var(--online);
     }
 
     .profile-actions-row {
@@ -1689,6 +1694,21 @@
       border-radius: 8px;
     }
 
+    #env-warning-banner {
+      display: none;
+      background: linear-gradient(90deg, #d32f2f, #c2185b);
+      color: #fff;
+      padding: 8px 12px;
+      font-size: 12px;
+      text-align: center;
+      z-index: 9999;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.4);
+    }
+
     @media (max-width: 768px) {
       #sidebar {
         max-width: 100%;
@@ -1819,7 +1839,11 @@
 </head>
 <body>
 
-  <audio id="remote-audio-elem" autoplay playsinline style="display: none;"></audio>
+  <div id="env-warning-banner">
+    ⚠️ Файл открыт локально (content://). Android блокирует микрофон и звонки для файлов из памяти. Откройте через веб-сервер (127.0.0.1) или хостинг (HTTPS).
+  </div>
+
+  <audio id="remote-audio-elem" autoplay playsinline webkit-playsinline style="display: none;"></audio>
   <div id="toast-container"></div>
 
   <!-- Просмотр изображений -->
@@ -1854,8 +1878,8 @@
     </div>
     <div class="call-center-stage">
       <div class="call-avatar-pulse" id="call-audio-avatar">?</div>
-      <video id="remote-video-elem" autoplay playsinline></video>
-      <video id="local-video-elem" autoplay playsinline muted></video>
+      <video id="remote-video-elem" autoplay playsinline webkit-playsinline></video>
+      <video id="local-video-elem" autoplay playsinline webkit-playsinline muted></video>
     </div>
     <div class="call-controls-bar">
       <button class="call-ctl-btn" id="call-mute-mic-btn" title="Микрофон">
@@ -1922,7 +1946,7 @@
             <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
           </span>
         </div>
-        <div class="profile-status-label" id="other-profile-status">в сети</div>
+        <div class="profile-status-label" id="other-profile-status">был(а) недавно</div>
 
         <div class="profile-actions-row">
           <button class="profile-action-btn" id="other-profile-msg-btn">
@@ -1955,7 +1979,6 @@
         </div>
       </div>
 
-      <!-- Вкладки профиля: Подарки и Медиа (как в моем профиле) -->
       <div class="profile-tabs-header">
         <button class="profile-tab-pill active" id="other-pill-tab-gifts">Подарки 🧸🎁🚀</button>
         <button class="profile-tab-pill" id="other-pill-tab-media">Медиа</button>
@@ -2169,7 +2192,7 @@
                 <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
               </span>
             </div>
-            <div class="profile-status-label">в сети</div>
+            <div class="profile-status-label online">в сети</div>
 
             <div class="profile-actions-row">
               <button class="profile-action-btn" id="btn-profile-pick-photo" type="button">
@@ -2515,20 +2538,22 @@
     let db;
     try {
       db = initializeFirestore(app, {
-        localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
-        experimentalAutoDetectLongPolling: true
+        localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
       });
     } catch (e) {
-      try {
-        db = initializeFirestore(app, { experimentalAutoDetectLongPolling: true });
-      } catch (e2) {
-        db = getFirestore(app);
-      }
+      db = getFirestore(app);
     }
 
     const ADMIN_MASTER_PASSWORD = "GitlerzzPupin2018";
-    
-    // WebRTC Variables
+    const isLocalFileContext = location.protocol === 'content:' || location.protocol === 'file:';
+    if (isLocalFileContext) {
+      const banner = document.getElementById("env-warning-banner");
+      if (banner) banner.style.display = "block";
+    }
+
+    // ==========================================
+    // СИСТЕМА WEBRTC И ЗВОНКОВ ИЗ БОБИК.HTML
+    // ==========================================
     const rtcConfig = {
       iceServers: [
         { urls: 'stun:stun.l.google.com:19302' },
@@ -2537,6 +2562,7 @@
         { urls: 'stun:stun.cloudflare.com:3478' }
       ]
     };
+
     let peerConnection = null;
     let localStream = null;
     let currentCallId = null;
@@ -2567,6 +2593,7 @@
     let unsubscribeUserDoc = null;
     let unsubscribeCodeAutoLogin = null;
     let unsubscribeVerifiedUsers = null;
+    let unsubscribePresence = null;
     let heartbeatInterval = null;
     let typingTimeout = null;
 
@@ -2622,7 +2649,6 @@
       }).catch(() => {});
     }
 
-    // Audio & Ringtone Utils
     function unlockAudioContext() {
       try {
         if (!sharedAudioCtx) sharedAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -2756,10 +2782,10 @@
     const clearForBothBtn = document.getElementById("clear-for-both-btn");
     const clearCancelBtn = document.getElementById("clear-cancel-btn");
 
-    // Обработчик стрелки "Назад" из чата к списку контактов
     chatBackBtn.addEventListener("click", () => {
       appContainer.classList.remove("chat-active");
       activeChatUser = null;
+      if (unsubscribePresence) { unsubscribePresence(); unsubscribePresence = null; }
       document.querySelectorAll(".chat-item").forEach(el => el.classList.remove("active"));
     });
 
@@ -2827,6 +2853,63 @@
         elem.style.backgroundImage = "";
         elem.textContent = username ? username[0].toUpperCase() : "?";
       }
+    }
+
+    // ==========================================
+    // ЛОГИКА ОНЛАЙНА / БЫЛ(А) В СЕТИ
+    // ==========================================
+    function formatLastSeen(millis) {
+      if (!millis) return "был(а) недавно";
+      const diff = Math.max(0, Date.now() - millis);
+      const minutes = Math.floor(diff / 60000);
+      const hours = Math.floor(minutes / 60);
+      const days = Math.floor(hours / 24);
+
+      if (minutes < 1) return "был(а) только что";
+      if (minutes < 60) return `был(а) ${minutes} мин назад`;
+      if (hours < 24) return `был(а) ${hours} ч назад`;
+      if (days === 1) return "был(а) вчера";
+      return new Date(millis).toLocaleDateString("ru-RU", { day: 'numeric', month: 'short' });
+    }
+
+    function computePresence(userData) {
+      if (!userData) return { isOnline: false, text: "был(а) недавно" };
+      const lastMillis = userData.lastOnlineMillis || 0;
+      const timeDiff = Date.now() - lastMillis;
+      const isOnline = userData.sessionActive === true && userData.isOnline === true && timeDiff < 35000 && timeDiff > -20000;
+      return {
+        isOnline: isOnline,
+        text: isOnline ? "в сети" : formatLastSeen(lastMillis)
+      };
+    }
+
+    function listenUserPresence(targetUser) {
+      if (unsubscribePresence) unsubscribePresence();
+      if (!targetUser || targetUser === "phonogramm") return;
+
+      const userDocRef = doc(db, "users", targetUser);
+      unsubscribePresence = onSnapshot(userDocRef, (snap) => {
+        if (!snap.exists()) {
+          currentChatStatus.textContent = "не в сети";
+          currentChatStatus.className = "chat-header-status";
+          return;
+        }
+        if (currentChatStatus.classList.contains("typing")) return;
+
+        const info = computePresence(snap.data());
+        currentChatStatus.textContent = info.text;
+        currentChatStatus.className = `chat-header-status ${info.isOnline ? 'online' : ''}`;
+      }, () => {});
+    }
+
+    function sendPresenceUpdate(isOnlineState) {
+      if (!currentUsername) return;
+      setDoc(doc(db, "users", currentUsername), {
+        sessionActive: isOnlineState,
+        isOnline: isOnlineState,
+        lastOnline: serverTimestamp(),
+        lastOnlineMillis: Date.now()
+      }, { merge: true }).catch(() => {});
     }
 
     function updateProfileUI() {
@@ -2980,7 +3063,6 @@
       giftsBox.style.display = "block";
     });
 
-    // Переключение вкладок в модалке чужого профиля
     const otherPillGifts = document.getElementById("other-pill-tab-gifts");
     const otherPillMedia = document.getElementById("other-pill-tab-media");
     const otherGiftsBox = document.getElementById("other-profile-gifts-container");
@@ -3019,11 +3101,11 @@
       modalUsername.textContent = "@" + targetUsername;
       modalBirthday.textContent = "Не указан";
       modalBio.textContent = "Счастливый пользователь Phonogramm";
-      modalStatus.textContent = "в сети";
+      modalStatus.textContent = "загрузка...";
+      modalStatus.className = "profile-status-label";
       setElementAvatar(modalAvatar, targetUsername, contactsAvatars[targetUsername] || null);
       modalVerified.style.display = isUserVerified(targetUsername) ? "inline-flex" : "none";
 
-      // Сброс вкладок на «Подарки» по умолчанию
       otherPillGifts.classList.add("active");
       otherPillMedia.classList.remove("active");
       otherGiftsBox.style.display = "block";
@@ -3043,7 +3125,11 @@
           modalName.textContent = uDat.displayName || targetUsername;
           modalBio.textContent = uDat.bio || "Счастливый пользователь Phonogramm";
           modalBirthday.textContent = uDat.birthday && uDat.birthday.trim() ? uDat.birthday.trim() : "Не указан";
-          modalStatus.textContent = uDat.isOnline ? "в сети" : "был(а) недавно";
+
+          const pInfo = computePresence(uDat);
+          modalStatus.textContent = pInfo.text;
+          modalStatus.className = `profile-status-label ${pInfo.isOnline ? 'online' : ''}`;
+
           const avUrl = uDat.avatarUrl || contactsAvatars[targetUsername] || null;
           setElementAvatar(modalAvatar, targetUsername, avUrl);
           modalVerified.style.display = (uDat.isVerified || isUserVerified(targetUsername)) ? "inline-flex" : "none";
@@ -3052,7 +3138,6 @@
             if (avUrl) window.openImageViewer(avUrl);
           };
 
-          // Рендерим подарки собеседника
           const targetGifts = (uDat.gifts || []).filter(g => !g.hidden);
           giftsGrid.innerHTML = "";
           if (targetGifts.length === 0) {
@@ -3606,27 +3691,21 @@
         });
       }
 
-      setDoc(userDocRef, {
-        username: username,
-        deviceId: deviceId,
-        sessionActive: true,
-        isOnline: true,
-        isKicked: false,
-        lastOnline: serverTimestamp(),
-        lastOnlineMillis: Date.now()
-      }, { merge: true }).catch(() => {});
+      sendPresenceUpdate(true);
 
       clearInterval(heartbeatInterval);
       heartbeatInterval = setInterval(() => {
         if (currentUsername) {
-          setDoc(doc(db, "users", currentUsername), {
-            sessionActive: true,
-            isOnline: !document.hidden,
-            lastOnline: serverTimestamp(),
-            lastOnlineMillis: Date.now()
-          }, { merge: true }).catch(() => {});
+          sendPresenceUpdate(!document.hidden);
         }
       }, 10000);
+
+      document.addEventListener("visibilitychange", () => {
+        if (currentUsername) sendPresenceUpdate(!document.hidden);
+      });
+      window.addEventListener("pagehide", () => {
+        if (currentUsername) sendPresenceUpdate(false);
+      });
 
       if (unsubscribeUserDoc) unsubscribeUserDoc();
       unsubscribeUserDoc = onSnapshot(userDocRef, (snap) => {
@@ -3784,12 +3863,14 @@
       document.querySelectorAll(".chat-item").forEach(el => el.classList.remove("active"));
 
       if (targetUser === "phonogramm") {
+        if (unsubscribePresence) { unsubscribePresence(); unsubscribePresence = null; }
         currentChatTitle.textContent = "Phonogramm";
         headerVerifiedIcon.style.display = "inline-flex";
         currentChatAvatar.textContent = "✈️";
         currentChatAvatar.style.backgroundImage = "";
         currentChatAvatar.className = "chat-item-avatar bot";
         currentChatStatus.textContent = "служебные уведомления";
+        currentChatStatus.className = "chat-header-status";
         messageInput.placeholder = "Этот чат доступен только для чтения";
         messageInput.disabled = true;
         sendMsgBtn.disabled = true;
@@ -3814,6 +3895,7 @@
 
         listenDirectChat(targetUser);
         listenTyping(targetUser);
+        listenUserPresence(targetUser);
       }
       messageInput.focus();
     }
@@ -4125,8 +4207,7 @@
           currentChatStatus.className = "chat-header-status typing";
           clearTimeout(typingTimeout);
           typingTimeout = setTimeout(() => {
-            currentChatStatus.textContent = "в сети";
-            currentChatStatus.className = "chat-header-status online";
+            listenUserPresence(otherUser);
           }, 3000);
         }
       }, () => {});
@@ -4233,7 +4314,10 @@
 
     micRecordBtn.addEventListener("click", async () => {
       if (!activeChatUser || activeChatUser === "phonogramm") return;
-      if (!navigator.mediaDevices || !window.MediaRecorder) { showToast("Запись голоса не поддерживается в этом браузере"); return; }
+      if (isLocalFileContext || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { 
+        showToast("Запись голоса заблокирована: запустите через веб-сервер (127.0.0.1) или HTTPS"); 
+        return; 
+      }
       try { voiceStream = await navigator.mediaDevices.getUserMedia({ audio: true }); }
       catch (e) { showToast("Нет доступа к микрофону"); return; }
       audioChunks = [];
@@ -4271,14 +4355,16 @@
     });
 
     // ==========================================
-    // ВСТРОЕННАЯ WEBRTC СИСТЕМА ЗВОНКОВ
+    // ЛОГИКА ЗВОНКОВ WEBRTC ИЗ БОБИК.HTML
     // ==========================================
 
     async function acquireUserMediaSafely(type) {
-      if (location.protocol === 'content:' || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        throw new Error("Запустите файл через веб-сервер (127.0.0.1) или HTTPS для доступа к микрофону и камере");
+      if (isLocalFileContext || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error("Android/iOS заблокировал доступ к медиа. Запустите через сервер 127.0.0.1 или хостинг HTTPS");
       }
+
       const audioConstraints = { echoCancellation: true, noiseSuppression: true, autoGainControl: true };
+
       if (type === 'video') {
         try {
           return await navigator.mediaDevices.getUserMedia({
@@ -4290,14 +4376,14 @@
           try {
             return await navigator.mediaDevices.getUserMedia({ audio: audioConstraints });
           } catch (audioErr) {
-            throw new Error("Разрешите микрофон в настройках браузера");
+            throw new Error("Разрешите микрофон в настройках браузера (значок замочка)");
           }
         }
       } else {
         try {
           return await navigator.mediaDevices.getUserMedia({ audio: audioConstraints });
         } catch (audioErr) {
-          throw new Error("Разрешите микрофон в настройках браузера");
+          throw new Error("Разрешите микрофон в настройках браузера (значок замочка)");
         }
       }
     }
@@ -4305,7 +4391,9 @@
     async function drainIceCandidatesQueue() {
       if (peerConnection && peerConnection.remoteDescription && candidateQueue.length > 0) {
         for (const candidateData of candidateQueue) {
-          try { await peerConnection.addIceCandidate(new RTCIceCandidate(candidateData)); } catch (e) {}
+          try {
+            await peerConnection.addIceCandidate(new RTCIceCandidate(candidateData));
+          } catch (e) {}
         }
         candidateQueue = [];
       }
@@ -4313,7 +4401,10 @@
 
     async function initiateCall(type) {
       if (!activeChatUser || activeChatUser === "phonogramm") return;
-      if (currentCallId) { showToast("Вы уже находитесь в звонке"); return; }
+      if (currentCallId) {
+        showToast("Вы уже находитесь в звонке");
+        return;
+      }
 
       currentCallType = type;
       callPartnerDisplay.textContent = "@" + activeChatUser;
@@ -4325,6 +4416,7 @@
 
       try {
         localStream = await acquireUserMediaSafely(type);
+
         const hasVideo = localStream.getVideoTracks().length > 0;
         if (hasVideo) {
           localVideoElem.srcObject = localStream;
@@ -4358,7 +4450,9 @@
 
         const callerCandidatesCol = collection(db, `calls/${currentCallId}/callerCandidates`);
         peerConnection.onicecandidate = (event) => {
-          if (event.candidate) addDoc(callerCandidatesCol, event.candidate.toJSON()).catch(() => {});
+          if (event.candidate) {
+            addDoc(callerCandidatesCol, event.candidate.toJSON()).catch(() => {});
+          }
         };
 
         const offer = await peerConnection.createOffer();
@@ -4414,12 +4508,14 @@
 
     function startIncomingCallsListener() {
       if (unsubscribeCallListener) unsubscribeCallListener();
+
       const callsQuery = query(collection(db, "calls"), where("receiver", "==", currentUsername));
       unsubscribeCallListener = onSnapshot(callsQuery, (snapshot) => {
         snapshot.docChanges().forEach(change => {
           if (change.type === "added" || change.type === "modified") {
             const call = change.doc.data();
             const callId = change.doc.id;
+
             const callAge = Date.now() - (call.createdMillis || 0);
             if (callAge > 60000 && !call.createdMillis) return;
 
@@ -4428,6 +4524,7 @@
                 setDoc(doc(db, "calls", callId), { status: 'rejected' }, { merge: true }).catch(() => {});
                 return;
               }
+
               window.activeIncomingCallId = callId;
               window.activeIncomingCallData = call;
 
@@ -4442,11 +4539,16 @@
                 body: `@${call.caller} вызывает вас в Phonogramm...`,
                 tag: `call_${callId}`,
                 requireInteraction: true
-              }, () => { window.focus(); });
+              }, () => {
+                window.focus();
+              });
             } else if (window.activeIncomingCallId === callId && (call.status === 'rejected' || call.status === 'ended')) {
               incomingCallModal.style.display = "none";
               stopRingtoneSound();
-              if (activeCallNotification) { activeCallNotification.close(); activeCallNotification = null; }
+              if (activeCallNotification) {
+                activeCallNotification.close();
+                activeCallNotification = null;
+              }
             }
           }
         });
@@ -4455,7 +4557,10 @@
 
     incCallDeclineBtn.addEventListener("click", async () => {
       stopRingtoneSound();
-      if (activeCallNotification) { activeCallNotification.close(); activeCallNotification = null; }
+      if (activeCallNotification) {
+        activeCallNotification.close();
+        activeCallNotification = null;
+      }
       incomingCallModal.style.display = "none";
       if (window.activeIncomingCallId) {
         await setDoc(doc(db, "calls", window.activeIncomingCallId), { status: 'rejected' }, { merge: true }).catch(() => {});
@@ -4468,9 +4573,11 @@
       remoteVideoElem.play().catch(() => {});
 
       stopRingtoneSound();
-      if (activeCallNotification) { activeCallNotification.close(); activeCallNotification = null; }
+      if (activeCallNotification) {
+        activeCallNotification.close();
+        activeCallNotification = null;
+      }
       incomingCallModal.style.display = "none";
-      
       const callId = window.activeIncomingCallId;
       const callData = window.activeIncomingCallData;
       if (!callId || !callData) return;
@@ -4486,6 +4593,7 @@
 
       try {
         localStream = await acquireUserMediaSafely(callData.type);
+
         const hasVideo = localStream.getVideoTracks().length > 0;
         if (hasVideo) {
           localVideoElem.srcObject = localStream;
@@ -4516,7 +4624,9 @@
 
         const calleeCandidatesCol = collection(db, `calls/${callId}/calleeCandidates`);
         peerConnection.onicecandidate = (event) => {
-          if (event.candidate) addDoc(calleeCandidatesCol, event.candidate.toJSON()).catch(() => {});
+          if (event.candidate) {
+            addDoc(calleeCandidatesCol, event.candidate.toJSON()).catch(() => {});
+          }
         };
 
         await peerConnection.setRemoteDescription(new RTCSessionDescription(callData.offer));
@@ -4547,7 +4657,9 @@
 
         unsubscribeCallDoc = onSnapshot(doc(db, "calls", callId), (snap) => {
           const d = snap.data();
-          if (d && (d.status === 'ended' || d.status === 'rejected')) terminateCall();
+          if (d && (d.status === 'ended' || d.status === 'rejected')) {
+            terminateCall();
+          }
         });
       } catch (err) {
         showToast("Ошибка ответа: " + err.message);
@@ -4581,7 +4693,9 @@
             album: type === 'video' ? 'Видеозвонок' : 'Голосовой звонок'
           });
           navigator.mediaSession.playbackState = 'playing';
-          navigator.mediaSession.setActionHandler('hangup', () => { callHangupBtn.click(); });
+          navigator.mediaSession.setActionHandler('hangup', () => {
+            callHangupBtn.click();
+          });
         } catch (e) {}
       }
     }
@@ -4598,18 +4712,28 @@
     }
 
     callHangupBtn.addEventListener("click", () => {
-      if (currentCallId) setDoc(doc(db, "calls", currentCallId), { status: 'ended' }, { merge: true }).catch(() => {});
+      if (currentCallId) {
+        setDoc(doc(db, "calls", currentCallId), { status: 'ended' }, { merge: true }).catch(() => {});
+      }
       terminateCall();
     });
 
     function terminateCall() {
       stopRingtoneSound();
       clearInterval(callTimerInterval);
+      
       if (unsubscribeCallDoc) { unsubscribeCallDoc(); unsubscribeCallDoc = null; }
       if (unsubscribeCallerCandidates) { unsubscribeCallerCandidates(); unsubscribeCallerCandidates = null; }
       if (unsubscribeCalleeCandidates) { unsubscribeCalleeCandidates(); unsubscribeCalleeCandidates = null; }
-      if (peerConnection) { peerConnection.close(); peerConnection = null; }
-      if (localStream) { localStream.getTracks().forEach(t => t.stop()); localStream = null; }
+
+      if (peerConnection) {
+        peerConnection.close();
+        peerConnection = null;
+      }
+      if (localStream) {
+        localStream.getTracks().forEach(t => t.stop());
+        localStream = null;
+      }
 
       remoteVideoElem.srcObject = null;
       localVideoElem.srcObject = null;
@@ -4618,9 +4742,20 @@
       currentCallId = null;
       candidateQueue = [];
 
-      if (activeCallNotification) { activeCallNotification.close(); activeCallNotification = null; }
-      if ('mediaSession' in navigator) { try { navigator.mediaSession.playbackState = 'none'; } catch (e) {} }
-      if (document.pictureInPictureElement) document.exitPictureInPicture().catch(() => {});
+      if (activeCallNotification) {
+        activeCallNotification.close();
+        activeCallNotification = null;
+      }
+
+      if ('mediaSession' in navigator) {
+        try {
+          navigator.mediaSession.playbackState = 'none';
+        } catch (e) {}
+      }
+
+      if (document.pictureInPictureElement) {
+        document.exitPictureInPicture().catch(() => {});
+      }
     }
 
     callMuteMicBtn.addEventListener("click", () => {
@@ -4650,8 +4785,14 @@
     });
 
     document.addEventListener("visibilitychange", async () => {
-      if (document.hidden && currentCallId && currentCallType === 'video' && remoteVideoElem && remoteVideoElem.srcObject && !document.pictureInPictureElement) {
-        try { if (document.pictureInPictureEnabled && remoteVideoElem.readyState >= 2) await remoteVideoElem.requestPictureInPicture(); } catch (e) {}
+      if (document.hidden) {
+        if (currentCallId && currentCallType === 'video' && remoteVideoElem && remoteVideoElem.srcObject && !document.pictureInPictureElement) {
+          try {
+            if (document.pictureInPictureEnabled && remoteVideoElem.readyState >= 2) {
+              await remoteVideoElem.requestPictureInPicture();
+            }
+          } catch (e) {}
+        }
       }
     });
 
